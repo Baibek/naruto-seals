@@ -113,14 +113,15 @@ aside{display:flex;flex-direction:column;gap:14px}
 #recBtn{flex:1;min-width:160px;user-select:none;-webkit-user-select:none;touch-action:none}
 #recBtn.on{background:var(--danger);border-color:#ff7b7f;color:#fff}
 kbd{background:#2c2218;border:1px solid var(--line2);border-bottom-width:2px;border-radius:5px;padding:0 6px;font-size:12px}
-.tech{border:1px solid var(--line);background:var(--panel2);border-radius:11px;padding:10px;margin-bottom:8px}
+.tech{border:1px solid var(--line);background:var(--panel2);border-radius:11px;padding:8px 10px;margin-bottom:7px}
+.tech .note{font-size:11px;color:var(--muted);border:1px dashed var(--line2);border-radius:6px;padding:0 5px;margin-left:4px}
 .tech:last-child{margin-bottom:0}
 .tech .hd{display:flex;align-items:center;gap:8px}
 .tech .hd .nm{font-weight:700}
 .tech .hd .jp{color:var(--muted);font-size:12px}
 .tech .hd .btn{margin-left:auto;padding:4px 10px;font-size:12px}
-.tech .seq{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-.tech .seq span{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}
+.tech .seq{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.tech .seq span{font-size:11.5px;padding:1px 7px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}
 .tech .seq span.done{border-color:var(--accent);color:#fff;background:rgba(255,122,26,.22)}
 .tech.active{border-color:var(--accent);box-shadow:0 0 18px rgba(255,122,26,.25)}
 .set{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;margin-bottom:10px}
@@ -263,9 +264,16 @@ const SEALS = [
 const SEAL = Object.fromEntries(SEALS.map(s => [s.id, s]));
 
 const TECHS = [
-  { id:"clones",  name:"Каге Бунсин но Дзюцу!",      jp:"影分身の術",       seq:["cross"], color:"#ffd27a" },
-  { id:"fire",    name:"Катон: Гоукакюу но Дзюцу!",  jp:"火遁・豪火球の術", seq:["snake","ram","monkey","boar","horse","tiger"], color:"#ff7a1a" },
-  { id:"chidori", name:"Чидори!",                    jp:"千鳥",             seq:["ox","hare","monkey"], color:"#5cc8ff" },
+  { id:"clones",    name:"Каге Бунсин но Дзюцу!",      jp:"影分身の術",       seq:["cross"], color:"#ffd27a" },
+  { id:"fire",      name:"Катон: Гоукакюу но Дзюцу!",  jp:"火遁・豪火球の術", seq:["snake","ram","monkey","boar","horse","tiger"], color:"#ff7a1a" },
+  { id:"chidori",   name:"Чидори!",                    jp:"千鳥",             seq:["ox","hare","monkey"], color:"#5cc8ff" },
+  { id:"hosenka",   name:"Катон: Хоосенка но Дзюцу!",  jp:"火遁・鳳仙火の術", seq:["rat","tiger","dog","ox","hare","tiger"], color:"#ff9a3d" },
+  { id:"ryuka",     name:"Катон: Рюука но Дзюцу!",     jp:"火遁・龍火の術",   seq:["snake","dragon","hare","tiger"], color:"#ff5a1f" },
+  { id:"daitoppa",  name:"Фуутон: Дайтоппа!",          jp:"風遁・大突破",     seq:["tiger","ox","dog","hare","snake"], color:"#bfe8ff" },
+  { id:"doryuheki", name:"Дотон: Дорюухеки!",          jp:"土遁・土流壁",     seq:["tiger","hare","boar","dog"], color:"#d0a46a" },
+  { id:"suiryudan", name:"Суйтон: Суйрюудан но Дзюцу!",jp:"水遁・水龍弾の術", seq:["ox","monkey","hare","rat","boar","bird"], color:"#4aa8ff", note:"қысқартылған" },
+  { id:"kuchiyose", name:"Кучиёсе но Дзюцу!",          jp:"口寄せの術",       seq:["boar","dog","bird","monkey","ram"], color:"#ffcc66" },
+  { id:"henge",     name:"Хенге но Дзюцу!",            jp:"変化の術",         seq:["dog","boar","ram"], color:"#ffd84a" },
 ];
 
 const DIM = 2 * 21 * 3;          // 2 қол × 21 нүкте × (x,y,z)
@@ -571,6 +579,7 @@ async function startCamera(){
 function resizeTo(w, h){
   W = canvas.width = w; H = canvas.height = h;
   personCanvas.width = w; personCanvas.height = h;
+  tintCanvas.width = w; tintCanvas.height = h;
 }
 
 /* =========================================================
@@ -578,6 +587,9 @@ function resizeTo(w, h){
    ========================================================= */
 const personCanvas = document.createElement("canvas");
 const pctx = personCanvas.getContext("2d");
+const tintCanvas = document.createElement("canvas");
+const tctx = tintCanvas.getContext("2d");
+personCanvas.width = tintCanvas.width = W; personCanvas.height = tintCanvas.height = H;
 const maskCanvas = document.createElement("canvas");
 const mctx = maskCanvas.getContext("2d");
 let maskImg = null, maskPrev = null, maskReady = false, personCx = null;
@@ -656,10 +668,15 @@ const SPR = {
   spark:  makeSprite(16, [[0,"rgba(255,255,255,1)"],[0.35,"rgba(170,230,255,.95)"],[1,"rgba(40,140,255,0)"]]),
   glowB:  makeSprite(128,[[0,"rgba(220,245,255,.95)"],[0.18,"rgba(120,200,255,.6)"],[0.5,"rgba(40,120,255,.18)"],[1,"rgba(0,60,255,0)"]]),
   smoke:  [makeSmoke(128, 7), makeSmoke(128, 31), makeSmoke(128, 77)],
+  water:  makeSprite(64, [[0,"rgba(240,252,255,.95)"],[0.3,"rgba(150,215,255,.85)"],[0.7,"rgba(40,120,225,.5)"],[1,"rgba(10,60,180,0)"]]),
+  drop:   makeSprite(16, [[0,"rgba(235,250,255,1)"],[0.5,"rgba(120,200,255,.8)"],[1,"rgba(40,120,230,0)"]]),
+  dust:   makeSprite(64, [[0,"rgba(170,140,105,.6)"],[0.55,"rgba(140,115,85,.3)"],[1,"rgba(120,100,80,0)"]]),
+  rock:   makeSprite(16, [[0,"rgba(110,90,70,1)"],[0.7,"rgba(80,65,50,.9)"],[1,"rgba(60,50,40,0)"]]),
+  wind:   makeSprite(64, [[0,"rgba(240,248,255,.35)"],[0.6,"rgba(220,235,250,.15)"],[1,"rgba(200,220,240,0)"]]),
 };
 
 const particles = [];
-const MAX_PARTICLES = 1400;
+const MAX_PARTICLES = 2200;
 function emit(p){
   if (particles.length >= MAX_PARTICLES) return;
   p.max = p.life; p.size0 = p.size;
@@ -694,11 +711,11 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const clamp01 = x => Math.max(0, Math.min(1, x));
 const easeOut = x => 1 - Math.pow(1 - x, 3);
 
-function puff(x, y, scale = 1){
+function puff(x, y, scale = 1, lifeMul = 1){
   const u = H / 720 * scale;
   for (let i = 0; i < 26; i++){
     emit({ x: x + rand(-50,50)*u, y: y + rand(-120,120)*u, vx: rand(-160,160)*u, vy: rand(-170,60)*u,
-      life: rand(0.7, 1.4), size: rand(110, 210)*u, grow: rand(70, 150)*u, drag: 2.6, g: -20*u,
+      life: rand(0.7, 1.4) * lifeMul, size: rand(110, 210)*u, grow: rand(70, 150)*u, drag: 2.6, g: -20*u,
       sprite: SPR.smoke[i % 3], alpha: 0.95, fadeIn: true });
   }
 }
@@ -721,72 +738,159 @@ function handsCenter(){
 /* =========================================================
    Эффекттер
    ========================================================= */
-const effects = { clones: null, fire: null, chidori: null };
+const effects = {
+  clones: null, fire: null, chidori: null, hosenka: null, ryuka: null,
+  daitoppa: null, doryuheki: null, suiryudan: null, kuchiyose: null, henge: null,
+};
 let shake = 0, tint = null;
+const anchor = (fx = 0.5, fy = 0.6) => handsCenter() || { x: W * fx, y: H * fy };
 
 function triggerTechnique(id){
   initAudio();
   const t = TECHS.find(x => x.id === id);
   showBanner(t);
   const now = performance.now();
-  if (id === "clones"){
-    effects.clones = {
-      t0: now, dur: 9,
-      list: [
-        { shift: -0.42, scale: 0.80, delay: 0.00 },
-        { shift:  0.42, scale: 0.80, delay: 0.10 },
-        { shift: -0.23, scale: 0.90, delay: 0.20 },
-        { shift:  0.23, scale: 0.90, delay: 0.30 },
-      ].map(c => ({ ...c, shown: false, gone: false, phase: Math.random() * 6 })),
-    };
-    if (!maskReady) fallbackMask();
-    sfxPoof();
-  } else if (id === "fire"){
-    const c = handsCenter() || { x: W * 0.5, y: H * 0.62 };
-    effects.fire = { t0: now, dur: 3.8, ox: c.x, oy: c.y, dir: c.x < W / 2 ? 1 : -1 };
-    sfxFire();
-  } else if (id === "chidori"){
-    const P = palms();
-    const pos = P.length ? P.reduce((a, b) => (b.x > a.x ? b : a)) : { x: W * 0.6, y: H * 0.6 };
-    effects.chidori = { t0: now, dur: 7, pos: { ...pos } };
-    sfxChidori(7);
+  const c = anchor();
+  const dir = c.x < W / 2 ? 1 : -1;            // қолдан экранның алыс жағына қарай
+  switch (id){
+    case "clones":
+      effects.clones = {
+        t0: now, dur: 9,
+        list: [
+          { shift: -0.42, scale: 0.80, delay: 0.00 },
+          { shift:  0.42, scale: 0.80, delay: 0.10 },
+          { shift: -0.23, scale: 0.90, delay: 0.20 },
+          { shift:  0.23, scale: 0.90, delay: 0.30 },
+        ].map(k => ({ ...k, shown: false, gone: false, phase: Math.random() * 6 })),
+      };
+      if (!maskReady) fallbackMask();
+      break;
+    case "fire":
+      effects.fire = { t0: now, dur: 3.8, ox: c.x, oy: c.y, dir };
+      break;
+    case "chidori": {
+      const P = palms();
+      const pos = P.length ? P.reduce((a, b) => (b.x > a.x ? b : a)) : { x: W * 0.6, y: H * 0.6 };
+      effects.chidori = { t0: now, dur: 7, pos: { ...pos } };
+      break;
+    }
+    case "hosenka": {
+      const balls = [];
+      for (let i = 0; i < 9; i++){
+        const a0 = rand(-1.05, 0.3);
+        balls.push({ delay: i * 0.11, ang: dir > 0 ? a0 : Math.PI - a0, speed: rand(0.55, 0.9) * W,
+          flight: rand(0.65, 0.95), curve: rand(-0.5, 0.5), exploded: false, x: null, y: null });
+      }
+      effects.hosenka = { t0: now, dur: 9 * 0.11 + 0.95 + 1.3, ox: c.x, oy: c.y, balls };
+      break;
+    }
+    case "ryuka":
+      effects.ryuka = { t0: now, dur: 4.2, pos: { ...c }, dir };
+      break;
+    case "daitoppa":
+      effects.daitoppa = { t0: now, dur: 3.8, pos: { ...c }, dir, streaks: [] };
+      break;
+    case "doryuheki": {
+      const w = Math.min(W * 0.78, W - 20), h = H * 0.58;
+      const x = Math.max(10, Math.min(W - w - 10, c.x - w / 2));
+      effects.doryuheki = { t0: now, dur: 6.5, x, w, h, canvas: makeWall(w, h), landed: false };
+      break;
+    }
+    case "suiryudan":
+      effects.suiryudan = { t0: now, dur: 5, side: c.x < W / 2 ? -1 : 1 };
+      break;
+    case "kuchiyose":
+      effects.kuchiyose = { t0: now, dur: 5.5, x: c.x, y: Math.min(H * 0.8, c.y + H * 0.28), puffed: false };
+      break;
+    case "henge":
+      effects.henge = { t0: now, dur: 7, p1: false, p2: false };
+      if (!maskReady) fallbackMask();
+      break;
   }
+  sfxTech(id);
   renderTechProgress(id);
 }
 
-function drawClones(now){
-  const e = effects.clones;
-  const t = (now - e.t0) / 1000;
+/* Адам қабаты: клондар + Хенге (сегментация маскасы арқылы) */
+function updatePersonCanvas(){
+  pctx.globalCompositeOperation = "source-over";
+  pctx.clearRect(0, 0, W, H);
+  pctx.drawImage(video, 0, 0, W, H);
+  pctx.globalCompositeOperation = "destination-in";
+  pctx.drawImage(maskCanvas, 0, 0, W, H);
+  pctx.globalCompositeOperation = "source-over";
+}
+function drawPersonLayer(now){
+  const cam = state.camReady;
+  if (cam) updatePersonCanvas();
   const cx = personCx ?? W / 2;              // кескін (айнасыз) координатасы
-  if (state.camReady){
-    pctx.globalCompositeOperation = "source-over";
-    pctx.clearRect(0, 0, W, H);
-    pctx.drawImage(video, 0, 0, W, H);
-    pctx.globalCompositeOperation = "destination-in";
-    pctx.drawImage(maskCanvas, 0, 0, W, H);
-    pctx.globalCompositeOperation = "source-over";
-  }
-  let alive = false;
-  ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1);     // айна кеңістігі
-  for (const c of e.list){
-    const appear = 0.15 + c.delay, vanish = e.dur + c.delay;
-    const s = c.scale;
-    const target = cx + c.shift * W;
-    const sway = Math.sin(t * 1.6 + c.phase) * W * 0.006;
-    const dx = target - s * cx + sway, dy = H * (1 - s) * 0.55;
-    const scr = { x: W - target, y: dy + s * H * 0.5 };
-    if (!c.shown && t >= appear){ c.shown = true; puff(scr.x, scr.y, s); }
-    if (c.shown && !c.gone && t >= vanish){ c.gone = true; puff(scr.x, scr.y, s); if (c === e.list[0]) sfxPoof(); }
-    if (!c.gone) alive = true;
-    if (c.shown && !c.gone && state.camReady){
-      ctx.globalAlpha = Math.min(1, (t - appear) * 6);
-      ctx.drawImage(personCanvas, dx, dy, W * s, H * s);
+  const u = H / 720;
+
+  // Хенге күйі
+  const hg = effects.henge;
+  let transformed = false;
+  if (hg){
+    const t = (now - hg.t0) / 1000;
+    const scr = { x: W - cx, y: H * 0.55 };
+    if (!hg.p1 && t >= 0.05){ hg.p1 = true; puff(scr.x, scr.y, 1.6); }
+    if (!hg.p2 && t >= hg.dur - 0.35){ hg.p2 = true; puff(scr.x, scr.y, 1.6); playS("poof", { rate: 0.85 }); }
+    transformed = t >= 0.3 && t < hg.dur - 0.2;
+    if (t > hg.dur + 1.2) effects.henge = null;
+    if (transformed && cam){
+      tctx.globalCompositeOperation = "source-over";
+      tctx.clearRect(0, 0, W, H);
+      tctx.drawImage(personCanvas, 0, 0);
+      tctx.globalCompositeOperation = "source-atop";
+      tctx.fillStyle = "rgba(255,170,35,.5)";
+      tctx.fillRect(0, 0, W, H);
+      tctx.globalCompositeOperation = "source-over";
+      if (Math.random() < 0.9){
+        for (let i = 0; i < 3; i++)
+          emit({ x: scr.x + rand(-0.13, 0.13) * W, y: rand(0.25, 0.95) * H, vx: rand(-30, 30) * u, vy: rand(-220, -120) * u,
+            life: rand(0.4, 0.8), size: rand(30, 70) * u, grow: -30 * u, sprite: SPR.fire, alpha: 0.45, add: true });
+      }
     }
   }
-  ctx.globalAlpha = 1;
-  if (state.camReady) ctx.drawImage(personCanvas, 0, 0, W, H);   // нақты адам — алдыңғы қабатта
+
+  ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1);     // айна кеңістігі
+  const e = effects.clones;
+  if (e){
+    const t = (now - e.t0) / 1000;
+    let alive = false;
+    for (const c of e.list){
+      const appear = 0.15 + c.delay, vanish = e.dur + c.delay;
+      const s = c.scale;
+      const target = cx + c.shift * W;
+      const sway = Math.sin(t * 1.6 + c.phase) * W * 0.006;
+      const dx = target - s * cx + sway, dy = H * (1 - s) * 0.55;
+      const scr = { x: W - target, y: dy + s * H * 0.5 };
+      if (!c.shown && t >= appear){ c.shown = true; puff(scr.x, scr.y, s); playS("poof", { rate: rand(0.9, 1.15), gain: 0.8 }); }
+      if (c.shown && !c.gone && t >= vanish){ c.gone = true; puff(scr.x, scr.y, s); playS("poof", { rate: rand(0.8, 1.0), gain: 0.7 }); }
+      if (!c.gone) alive = true;
+      if (c.shown && !c.gone && cam){
+        ctx.globalAlpha = Math.min(1, (t - appear) * 6);
+        ctx.drawImage(personCanvas, dx, dy, W * s, H * s);
+      }
+    }
+    ctx.globalAlpha = 1;
+    if (!alive && t > e.dur + 1.6) effects.clones = null;
+  }
+  if (cam){
+    if (transformed){
+      // Чакра аурасы + боялған адам
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = 0.35 + 0.15 * Math.sin(now / 90);
+      const k = 1.035;
+      ctx.drawImage(tintCanvas, cx - cx * k, H - H * k, W * k, H * k);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 1;
+      ctx.drawImage(tintCanvas, 0, 0);
+    } else if (e){
+      ctx.drawImage(personCanvas, 0, 0, W, H);   // нақты адам — алдыңғы қабатта
+    }
+  }
   ctx.restore();
-  if (!alive && t > e.dur + 1.6) effects.clones = null;
+  if (transformed) tint = { color: "255,190,60", a: 0.07 };
 }
 
 function drawFire(now){
@@ -900,6 +1004,259 @@ function drawChidori(now){
   shake = Math.max(shake, 2.5 * a * u);
 }
 
+const env01 = (t, dur, fin = 0.2, fout = 0.6) => clamp01(t / fin) * (t > dur - fout ? clamp01((dur - t) / fout) : 1);
+
+/* Катон: Хоосенка — бірнеше кішкентай от шарлары */
+function drawHosenka(now){
+  const e = effects.hosenka, t = (now - e.t0) / 1000;
+  if (t > e.dur){ effects.hosenka = null; return; }
+  const u = H / 720;
+  ctx.globalCompositeOperation = "lighter";
+  for (const b of e.balls){
+    const bt = t - b.delay;
+    if (bt < 0) continue;
+    if (bt < b.flight){
+      const a = b.ang + b.curve * bt * 0.5;
+      const x = e.ox + Math.cos(a) * b.speed * bt, y = e.oy + Math.sin(a) * b.speed * bt + 0.3 * H * bt * bt;
+      const R = H * 0.034 * (1 + 0.15 * Math.sin(now * 0.05 + b.delay * 10));
+      ctx.globalAlpha = 0.9; ctx.drawImage(SPR.glowO, x - R*2.6, y - R*2.6, R*5.2, R*5.2);
+      ctx.globalAlpha = 1;   ctx.drawImage(SPR.fire,  x - R*1.2, y - R*1.2, R*2.4, R*2.4);
+      for (let i = 0; i < 3; i++)
+        emit({ x, y, vx: rand(-50, 50)*u, vy: rand(-60, 20)*u, life: rand(0.2, 0.4), size: R * rand(1.2, 2), grow: -R * 2,
+          sprite: SPR.fire, alpha: 0.7, add: true });
+      b.x = x; b.y = y;
+    } else if (!b.exploded){
+      b.exploded = true;
+      if (b.x == null) continue;
+      for (let i = 0; i < 26; i++){
+        const ang = Math.random() * Math.PI * 2, sp = rand(80, 380) * u;
+        emit({ x: b.x, y: b.y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp - 60*u, life: rand(0.3, 0.7),
+          size: rand(30, 75) * u, grow: -40*u, drag: 2, g: -80*u, sprite: SPR.fire, alpha: 0.8, add: true });
+      }
+      for (let i = 0; i < 6; i++)
+        emit({ x: b.x, y: b.y, vx: rand(-260, 260)*u, vy: rand(-300, 0)*u, life: rand(0.6, 1.1), size: rand(5, 10)*u,
+          drag: 1, g: 500*u, sprite: SPR.ember, alpha: 1, add: true });
+      emit({ x: b.x, y: b.y - 20*u, vx: 0, vy: -40*u, life: 1.2, size: 120*u, grow: 80*u, sprite: SPR.smoke[0], alpha: 0.35, fadeIn: true });
+      shake = Math.max(shake, 5 * u);
+    }
+  }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  tint = { color: "255,100,0", a: 0.08 * env01(t, e.dur) };
+}
+
+/* Катон: Рюука — қолдан шығатын от ағыны */
+function drawRyuka(now){
+  const e = effects.ryuka, t = (now - e.t0) / 1000;
+  if (t > e.dur){ effects.ryuka = null; return; }
+  const c = handsCenter();
+  if (c){ e.pos.x += (c.x - e.pos.x) * 0.4; e.pos.y += (c.y - e.pos.y) * 0.4; }
+  const a = env01(t, e.dur, 0.15, 0.7), u = H / 720;
+  const base = e.dir > 0 ? -0.35 : Math.PI + 0.35;
+  const n = Math.round(20 * a);
+  for (let i = 0; i < n; i++){
+    const ang = base + rand(-0.14, 0.14), sp = rand(700, 1150) * u;
+    emit({ x: e.pos.x, y: e.pos.y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: rand(0.45, 0.8),
+      size: rand(28, 55) * u, grow: 240 * u, drag: 0.7, g: -160 * u, sprite: SPR.fire, alpha: 0.5, add: true });
+  }
+  if (Math.random() < 0.6 * a)
+    emit({ x: e.pos.x, y: e.pos.y, vx: Math.cos(base) * rand(500, 900)*u, vy: Math.sin(base) * rand(500, 900)*u - 100*u,
+      life: rand(0.8, 1.4), size: rand(5, 11)*u, drag: 0.8, g: 400*u, sprite: SPR.ember, alpha: 1, add: true });
+  const R = H * 0.13 * (1 + 0.1 * Math.random());
+  ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.9 * a;
+  ctx.drawImage(SPR.glowO, e.pos.x - R, e.pos.y - R, R * 2, R * 2);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  tint = { color: "255,90,0", a: 0.13 * a };
+  shake = Math.max(shake, 4 * a * u);
+}
+
+/* Фуутон: Дайтоппа — күшті жел толқыны */
+function drawDaitoppa(now){
+  const e = effects.daitoppa, t = (now - e.t0) / 1000;
+  if (t > e.dur){ effects.daitoppa = null; return; }
+  const c = handsCenter();
+  if (c){ e.pos.x += (c.x - e.pos.x) * 0.3; e.pos.y += (c.y - e.pos.y) * 0.3; }
+  const a = env01(t, e.dur, 0.15, 0.8), u = H / 720, dt = frameDt;
+  for (let i = 0; i < Math.round(7 * a); i++)
+    e.streaks.push({ x: e.pos.x + e.dir * rand(0, 0.08) * W, y: e.pos.y + rand(-0.4, 0.35) * H,
+      len: rand(0.08, 0.28) * W, v: rand(1.6, 2.8) * W, w: rand(1, 4) * u, al: rand(0.25, 0.65), life: rand(0.3, 0.6), age: 0 });
+  ctx.lineCap = "round";
+  for (let i = e.streaks.length - 1; i >= 0; i--){
+    const s = e.streaks[i];
+    s.age += dt; s.x += e.dir * s.v * dt; s.y += Math.sin(s.age * 9 + i) * 40 * u * dt;
+    if (s.age > s.life){ e.streaks.splice(i, 1); continue; }
+    const f = 1 - s.age / s.life;
+    ctx.strokeStyle = `rgba(235,245,255,${s.al * f})`; ctx.lineWidth = s.w;
+    ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - e.dir * s.len, s.y); ctx.stroke();
+  }
+  for (let i = 0; i < Math.round(3 * a); i++)
+    emit({ x: e.pos.x, y: e.pos.y + rand(-0.25, 0.25) * H, vx: e.dir * rand(900, 1500) * u, vy: rand(-120, 120) * u,
+      life: rand(0.5, 0.9), size: rand(60, 140) * u, grow: 200 * u, sprite: SPR.wind, alpha: 0.9 });
+  if (Math.random() < 0.5 * a)
+    emit({ x: e.pos.x, y: H * rand(0.6, 1), vx: e.dir * rand(700, 1200) * u, vy: rand(-250, -60) * u,
+      life: rand(0.6, 1), size: rand(4, 9) * u, g: 300 * u, sprite: SPR.rock, alpha: 1 });
+  tint = { color: "200,230,255", a: 0.07 * a };
+  shake = Math.max(shake, 5 * a * u);
+}
+
+/* Дотон: Дорюухеки — жерден көтерілетін тас қабырға */
+function makeWall(w, h){
+  const c = document.createElement("canvas"); c.width = Math.ceil(w); c.height = Math.ceil(h);
+  const g = c.getContext("2d");
+  const top = [];
+  const seg = Math.max(8, Math.round(w / 70));
+  for (let i = 0; i <= seg; i++) top.push([w * i / seg, h * (0.02 + Math.random() * 0.12)]);
+  g.beginPath(); g.moveTo(0, h);
+  for (const [x, y] of top) g.lineTo(x, y);
+  g.lineTo(w, h); g.closePath();
+  g.save(); g.clip();
+  const grd = g.createLinearGradient(0, 0, 0, h);
+  grd.addColorStop(0, "#9c8466"); grd.addColorStop(0.5, "#7a6248"); grd.addColorStop(1, "#3e2f22");
+  g.fillStyle = grd; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 260; i++){
+    const x = Math.random() * w, y = Math.random() * h, r = 6 + Math.random() * 40;
+    const dark = Math.random() < 0.55;
+    const rg = g.createRadialGradient(x, y, 0, x, y, r);
+    rg.addColorStop(0, dark ? "rgba(40,28,18,.28)" : "rgba(200,180,150,.18)"); rg.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = rg; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  g.strokeStyle = "rgba(30,20,12,.65)"; g.lineCap = "round";
+  for (let i = 1; i < 5; i++){                       // тас блоктардың жіктері
+    let x = w * i / 5 + (Math.random() - 0.5) * 40, y = 0;
+    g.lineWidth = 3; g.beginPath(); g.moveTo(x, y);
+    while (y < h){ y += 20 + Math.random() * 30; x += (Math.random() - 0.5) * 18; g.lineTo(x, y); }
+    g.stroke();
+  }
+  for (let i = 0; i < 18; i++){                      // жарықтар
+    let x = Math.random() * w, y = Math.random() * h;
+    g.lineWidth = 1 + Math.random() * 1.5; g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 5; k++){ x += (Math.random() - 0.5) * 50; y += Math.random() * 35; g.lineTo(x, y); }
+    g.stroke();
+  }
+  g.restore();
+  g.beginPath(); g.moveTo(top[0][0], top[0][1]);
+  for (const [x, y] of top) g.lineTo(x, y);
+  g.strokeStyle = "rgba(225,205,170,.7)"; g.lineWidth = 3; g.stroke();
+  return c;
+}
+function drawDoryuheki(now){
+  const e = effects.doryuheki, t = (now - e.t0) / 1000;
+  if (t > e.dur){ effects.doryuheki = null; return; }
+  const u = H / 720, rise = 1.0;
+  let p = t < rise ? easeOut(t / rise) : 1;
+  if (t > e.dur - 0.9) p = clamp01((e.dur - t) / 0.9);
+  const y = H - p * e.h;
+  const moving = t < rise || t > e.dur - 0.9;
+  const jx = moving ? rand(-5, 5) * u : 0;
+  ctx.drawImage(e.canvas, e.x + jx, y, e.w, e.h);
+  if (moving){
+    for (let i = 0; i < 5; i++)
+      emit({ x: e.x + Math.random() * e.w, y: H - 10 * u, vx: rand(-220, 220) * u, vy: rand(-260, -60) * u,
+        life: rand(0.6, 1.2), size: rand(70, 150) * u, grow: 90 * u, drag: 1.5, sprite: SPR.dust, alpha: 0.85, fadeIn: true });
+    for (let i = 0; i < 2; i++)
+      emit({ x: e.x + Math.random() * e.w, y: y + 10 * u, vx: rand(-160, 160) * u, vy: rand(-380, -120) * u,
+        life: rand(0.7, 1.2), size: rand(6, 14) * u, g: 1000 * u, sprite: SPR.rock, alpha: 1 });
+    shake = Math.max(shake, 7 * u);
+  }
+  if (!e.landed && t >= rise){
+    e.landed = true;
+    shake = Math.max(shake, 16 * u);
+    for (let i = 0; i < 24; i++)
+      emit({ x: e.x + Math.random() * e.w, y: H - 5 * u, vx: rand(-300, 300) * u, vy: rand(-200, -40) * u,
+        life: rand(0.8, 1.5), size: rand(90, 180) * u, grow: 100 * u, drag: 2, sprite: SPR.dust, alpha: 0.8, fadeIn: true });
+  }
+}
+
+/* Суйтон: Суйрюудан — ирелеңдеген су айдаһары */
+function drawSuiryudan(now){
+  const e = effects.suiryudan, t = (now - e.t0) / 1000;
+  if (t > e.dur){ effects.suiryudan = null; return; }
+  const a = env01(t, e.dur, 0.1, 0.9), u = H / 720;
+  const head = clamp01(t / 1.3);
+  const x0 = W * (0.5 + e.side * 0.36), y0 = H * 1.08;
+  const P = s => ({
+    x: x0 - e.side * s * W * 0.62 + Math.sin(s * 9 - t * 4) * W * 0.035,
+    y: y0 - (1 - (1 - s) * (1 - s)) * H * 0.92 + Math.cos(s * 7 - t * 3) * H * 0.035,
+  });
+  const N = 70;
+  ctx.globalAlpha = 0.85 * a;
+  for (let i = 0; i <= N; i++){
+    const s = head * i / N;
+    const q = P(s), r = H * (0.03 + 0.05 * (i / N));
+    ctx.drawImage(SPR.water, q.x - r, q.y - r, r * 2, r * 2);
+  }
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = 0; i <= N; i += 3){
+    const s = head * i / N, q = P(s), r = H * (0.012 + 0.02 * (i / N));
+    ctx.globalAlpha = 0.35 * a;
+    ctx.drawImage(SPR.drop, q.x - r + Math.sin(now / 60 + i) * 4 * u, q.y - r, r * 2, r * 2);
+  }
+  const h = P(head), hr = H * 0.13;
+  ctx.globalAlpha = 0.6 * a; ctx.drawImage(SPR.water, h.x - hr, h.y - hr, hr * 2, hr * 2);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  for (let i = 0; i < Math.round(6 * a); i++){
+    const q = P(head * Math.random());
+    emit({ x: q.x, y: q.y, vx: rand(-300, 300) * u, vy: rand(-380, -80) * u, life: rand(0.5, 1), size: rand(6, 14) * u,
+      g: 1100 * u, sprite: SPR.drop, alpha: 0.9 });
+  }
+  for (let i = 0; i < 2; i++)
+    emit({ x: h.x, y: h.y, vx: rand(-200, 200) * u, vy: rand(-200, 100) * u, life: rand(0.4, 0.7), size: rand(40, 80) * u,
+      grow: 60 * u, sprite: SPR.water, alpha: 0.4 });
+  tint = { color: "40,120,255", a: 0.1 * a };
+  shake = Math.max(shake, 3 * a * u);
+}
+
+/* Кучиёсе — жердегі шақыру мөрі және үлкен түтін */
+const KUCHI_GLYPHS = "口寄契約封印血術召喚陣";
+function drawKuchiyose(now){
+  const e = effects.kuchiyose, t = (now - e.t0) / 1000;
+  if (t > e.dur){ effects.kuchiyose = null; return; }
+  const u = H / 720;
+  const p = easeOut(clamp01(t / 0.45));
+  const a = t > e.dur - 1.2 ? clamp01((e.dur - t) / 1.2) : 1;
+  const R = H * 0.55 * p;
+  ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 0.3);
+  ctx.globalAlpha = a;
+  ctx.globalCompositeOperation = "lighter";
+  ctx.drawImage(SPR.glowO, -R * 1.3, -R * 1.3, R * 2.6, R * 2.6);
+  ctx.globalCompositeOperation = "source-over";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const n = 16;
+  // 1-өту: қызғылт сары жарқыл (қараңғы фонда көріну үшін), 2-өту: қара сия
+  for (let pass = 0; pass < 2; pass++){
+    const glow = pass === 0;
+    ctx.globalCompositeOperation = glow ? "lighter" : "source-over";
+    ctx.strokeStyle = ctx.fillStyle = glow ? "rgba(255,140,40,.55)" : "rgba(15,8,5,.92)";
+    ctx.lineWidth = (glow ? 14 : 5) * u;
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.22, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.26, 0, Math.PI * 2); ctx.stroke();
+    ctx.font = `900 ${Math.max(10, H * 0.06)}px serif`;
+    for (let i = 0; i < n; i++){
+      const ang = i / n * Math.PI * 2, len = R * (i % 2 ? 0.8 : 1.0);
+      const cs = Math.cos(ang), sn = Math.sin(ang);
+      ctx.beginPath(); ctx.moveTo(cs * R * 0.27, sn * R * 0.27); ctx.lineTo(cs * len, sn * len); ctx.stroke();
+      if (glow){ ctx.lineWidth = 6 * u; ctx.strokeText(KUCHI_GLYPHS[i % KUCHI_GLYPHS.length], cs * (len + H * 0.05), sn * (len + H * 0.05)); ctx.lineWidth = 14 * u; }
+      else ctx.fillText(KUCHI_GLYPHS[i % KUCHI_GLYPHS.length], cs * (len + H * 0.05), sn * (len + H * 0.05));
+    }
+    ctx.font = `900 ${Math.max(12, H * 0.09)}px serif`;
+    if (glow){ ctx.lineWidth = 8 * u; ctx.strokeText("口寄", 0, 0); } else ctx.fillText("口寄", 0, 0);
+  }
+  ctx.globalCompositeOperation = "source-over";
+  ctx.restore();
+  ctx.globalAlpha = 1;
+  if (!e.puffed && t >= 0.5){
+    e.puffed = true;
+    for (let k = 0; k < 4; k++) puff(e.x + rand(-0.12, 0.12) * W, e.y - rand(0.1, 0.45) * H, 2.2, 1.8);
+    shake = Math.max(shake, 18 * u);
+  }
+  if (t > 0.5 && t < 1.3){
+    const q = (t - 0.5) / 0.8;
+    ctx.save(); ctx.translate(e.x, e.y); ctx.scale(1, 0.3);
+    ctx.strokeStyle = `rgba(255,240,210,${0.7 * (1 - q)})`; ctx.lineWidth = 10 * u * (1 - q) + 1;
+    ctx.beginPath(); ctx.arc(0, 0, W * 0.7 * q, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+}
+
 /* =========================================================
    Қол нүктелері
    ========================================================= */
@@ -927,7 +1284,7 @@ function drawLandmarks(){
 /* =========================================================
    Негізгі цикл
    ========================================================= */
-let lastVideoTime = -1, lastFrame = performance.now(), fpsAcc = 0, fpsN = 0, fps = 0;
+let lastVideoTime = -1, lastFrame = performance.now(), fpsAcc = 0, fpsN = 0, fps = 0, frameDt = 0.016;
 
 function processFrame(now){
   if (!handLandmarker) return;
@@ -942,12 +1299,12 @@ function processFrame(now){
   const ok = p && p.conf >= MIN_CONF && p.dist <= state.settings.threshold;
   state.accepted = ok ? p.label : null;
   if (!state.recording) updateStable(state.accepted);
-  if (effects.clones && segmenter) runSegmentation(now);   // тек клон кезінде
+  if ((effects.clones || effects.henge) && segmenter) runSegmentation(now);   // тек клон/Хенге кезінде
 }
 
 function frame(now){
   requestAnimationFrame(frame);
-  const dt = Math.min(0.05, (now - lastFrame) / 1000); lastFrame = now;
+  const dt = Math.min(0.05, (now - lastFrame) / 1000); lastFrame = now; frameDt = dt;
   fpsAcc += dt; fpsN++;
   if (fpsAcc > 0.5){ fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0; }
 
@@ -971,9 +1328,15 @@ function frame(now){
   } else {
     ctx.fillStyle = "#120d09"; ctx.fillRect(0, 0, W, H);
   }
-  if (effects.clones) drawClones(now);
+  if (effects.clones || effects.henge) drawPersonLayer(now);
+  if (effects.kuchiyose) drawKuchiyose(now);
+  if (effects.suiryudan) drawSuiryudan(now);
   if (effects.fire) drawFire(now);
+  if (effects.ryuka) drawRyuka(now);
+  if (effects.hosenka) drawHosenka(now);
+  if (effects.daitoppa) drawDaitoppa(now);
   if (effects.chidori) drawChidori(now);
+  if (effects.doryuheki) drawDoryuheki(now);
   updateParticles(dt);
   drawParticles();
   if (tint){ ctx.fillStyle = `rgba(${tint.color},${tint.a})`; ctx.fillRect(-20, -20, W + 40, H + 40); }
@@ -1052,7 +1415,7 @@ function updateCounts(){
 function buildTechList(){
   $("#techList").innerHTML = TECHS.map(t => `
     <div class="tech" data-id="${t.id}">
-      <div class="hd"><div><div class="nm" style="color:${t.color}">${t.name.replace(/!$/, "")}</div><div class="jp">${t.jp}</div></div>
+      <div class="hd"><div><div class="nm" style="color:${t.color}">${t.name.replace(/!$/, "")}</div><div class="jp">${t.jp}${t.note ? `<span class="note">${t.note}</span>` : ""}</div></div>
       <button class="btn" data-test="${t.id}">▶ Тест</button></div>
       <div class="seq">${t.seq.map(id => `<span>${SEAL[id].kanji} ${SEAL[id].name}</span>`).join('<span style="border:0;padding:0 1px">→</span>')}</div>
     </div>`).join("");
@@ -1102,8 +1465,134 @@ function initAudio(){
   const len = c.sampleRate * 2, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
   for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
   audio.noise = buf;
+  decodeAll();
 }
 const canPlay = () => audio.ctx && state.settings.sound;
+
+/* ---- Үлгі дыбыстар (CC0, sounds/ бумасында) ---- */
+const SAMPLE_NAMES = ["poof","burst","drum","thunder","rumble","impact","seal","splash","whoosh","rwhoosh","sparkle","riser",
+  "flame","fire_crackle","explosion1","explosion2","chidori_charge","chidori_crackle","chidori_snap","earthquake","stone","wind","magic"];
+const CUSTOM_NAMES = [...TECHS.map(t => t.id), "seal"];   // sounds/custom/<атауы>.mp3
+const rawSounds = {};      // name -> ArrayBuffer (декодталмаған)
+audio.buffers = {}; audio.custom = {};
+
+function preloadSounds(){
+  for (const n of SAMPLE_NAMES)
+    fetch(`sounds/${n}.mp3`).then(r => r.ok ? r.arrayBuffer() : null).then(b => { if (b){ rawSounds[n] = b; decodeAll(); } }).catch(() => {});
+  // Өз дыбыстарыңыз: sounds/custom/list.json ішінде аталған файлдар ғана сұралады
+  fetch("sounds/custom/list.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null).then(list => {
+    if (!Array.isArray(list)) return;
+    for (const n of list.filter(x => CUSTOM_NAMES.includes(x)))
+      fetch(`sounds/custom/${n}.mp3`, { cache: "no-cache" }).then(r => r.ok ? r.arrayBuffer() : null)
+        .then(b => { if (b){ rawSounds["custom:" + n] = b; decodeAll(); } }).catch(() => {});
+  }).catch(() => {});
+}
+function decodeAll(){
+  if (!audio.ctx) return;
+  for (const key of Object.keys(rawSounds)){
+    const b = rawSounds[key]; delete rawSounds[key];
+    audio.ctx.decodeAudioData(b).then(buf => {
+      if (key.startsWith("custom:")) audio.custom[key.slice(7)] = buf; else audio.buffers[key] = buf;
+    }).catch(e => console.warn("Дыбыс декодталмады:", key, e));
+  }
+}
+function playBuf(buf, o = {}){
+  const c = audio.ctx, t = c.currentTime + (o.delay || 0);
+  const src = c.createBufferSource(), g = c.createGain();
+  src.buffer = buf; src.playbackRate.value = o.rate || 1;
+  g.gain.value = o.gain ?? 1;
+  src.connect(g).connect(audio.master);
+  src.start(t, o.offset || 0, o.duration);
+  return true;
+}
+// Үлгіні ойнату; файл жүктелмесе false қайтарады
+function playS(name, o){
+  if (!canPlay() || !audio.buffers[name]) return false;
+  return playBuf(audio.buffers[name], o);
+}
+const hasSamples = () => !!(audio.buffers.poof && audio.buffers.flame);
+
+function sfxTech(id){
+  if (!canPlay()) return;
+  if (audio.custom[id]){ playBuf(audio.custom[id]); return; }
+  if (!hasSamples()){                     // үлгілер жүктелмесе — синтезатор
+    if (id === "chidori") sfxChidori(7);
+    else if (["fire","hosenka","ryuka"].includes(id)) sfxFire();
+    else sfxPoof();
+    return;
+  }
+  switch (id){
+    case "clones":
+      playS("drum", { gain: 0.55 }); playS("rwhoosh", { gain: 0.6 });
+      break;                               // әр клонның «пуфы» drawPersonLayer ішінде
+    case "fire":
+      playS("rwhoosh", { gain: 0.8 });
+      playS("flame", { delay: 0.3 }); playS("flame", { delay: 0.65, rate: 0.8 }); playS("flame", { delay: 1.05, rate: 0.7, gain: 0.8 });
+      playS("fire_crackle", { delay: 0.3, gain: 0.9 });
+      playS("rumble", { delay: 0.3, gain: 0.8 }); playS("drum", { delay: 0.3, gain: 0.5 });
+      break;
+    case "chidori":
+      playS("thunder", { gain: 0.55 });
+      playS("chidori_charge", { gain: 0.85 }); playS("chidori_crackle", { gain: 0.9 });
+      playS("chidori_snap", { delay: 0.6, gain: 0.7 });
+      chirps(7, 0.025);                    // «мың құстың шиқылы»
+      break;
+    case "hosenka":
+      playS("rwhoosh", { gain: 0.7 });
+      for (let i = 0; i < 9; i++){
+        playS("flame", { delay: i * 0.11, rate: rand(1.1, 1.35), gain: 0.45 });
+        playS(i % 2 ? "explosion2" : "explosion1", { delay: i * 0.11 + 0.8, rate: rand(0.85, 1.15), gain: 0.75 });
+      }
+      break;
+    case "ryuka":
+      playS("rwhoosh", { gain: 0.8 });
+      for (let k = 0; k < 6; k++) playS("flame", { delay: 0.2 + k * 0.55, rate: rand(0.65, 0.8), gain: 0.85 });
+      playS("fire_crackle", { delay: 0.2 }); playS("rumble", { delay: 0.2, gain: 0.7 });
+      break;
+    case "daitoppa":
+      playS("whoosh"); playS("wind", { delay: 0.05 }); playS("whoosh", { delay: 0.5, rate: 0.8, gain: 0.7 });
+      playS("rumble", { gain: 0.4 });
+      break;
+    case "doryuheki":
+      playS("earthquake"); playS("rumble", { gain: 0.9 }); playS("stone", { delay: 0.15 });
+      playS("impact", { delay: 1.0 }); playS("drum", { delay: 1.0, gain: 0.5 });
+      playS("stone", { delay: 5.6, rate: 0.8 });
+      break;
+    case "suiryudan":
+      playS("splash"); playS("whoosh", { delay: 0.15 }); waterRush(4.6);
+      playS("splash", { delay: 1.3, rate: 0.75 }); playS("whoosh", { delay: 1.2, rate: 0.7, gain: 0.7 });
+      playS("splash", { delay: 4.2, rate: 0.65 });
+      break;
+    case "kuchiyose":
+      playS("riser", { gain: 0.8 }); playS("drum", { delay: 0.5 });
+      playS("burst", { delay: 0.5 }); playS("poof", { delay: 0.52, rate: 0.6 }); playS("rumble", { delay: 0.5, gain: 0.6 });
+      break;
+    case "henge":
+      playS("poof"); playS("sparkle", { delay: 0.1, gain: 0.8 }); playS("magic", { delay: 0.15, gain: 0.5 });
+      break;
+  }
+}
+// Чидоридің құс шиқылына ұқсас жоғары жиілікті қабат
+function chirps(dur, level){
+  const c = audio.ctx, t = c.currentTime;
+  const o = c.createOscillator(), og = c.createGain();
+  o.type = "square"; og.gain.value = 0;
+  for (let x = 0; x < dur; x += 0.04){
+    o.frequency.setValueAtTime(rand(1800, 4200), t + x);
+    og.gain.setValueAtTime(level * Math.min(1, x / 0.25, (dur - x) / 0.5), t + x);
+  }
+  og.gain.setValueAtTime(0, t + dur);
+  o.connect(og).connect(audio.master); o.start(t); o.stop(t + dur + 0.05);
+}
+// Судың гүрілі: сүзгіден өткен шу
+function waterRush(dur){
+  const c = audio.ctx, t = c.currentTime;
+  const n = noiseSrc(), lp = c.createBiquadFilter(), g = c.createGain();
+  lp.type = "lowpass"; lp.Q.value = 0.8;
+  for (let x = 0; x < dur; x += 0.1) lp.frequency.setValueAtTime(700 + 500 * Math.sin(x * 5) + rand(0, 300), t + x);
+  env(g, t, 0.5, 0.3, dur - 1.3, 1);
+  n.connect(lp).connect(g).connect(audio.master); n.start(t, Math.random()); n.stop(t + dur + 0.1);
+}
 function noiseSrc(){ const s = audio.ctx.createBufferSource(); s.buffer = audio.noise; s.loop = true; return s; }
 function env(g, t, peak, attack, hold, release){
   g.gain.setValueAtTime(0.0001, t);
@@ -1113,6 +1602,8 @@ function env(g, t, peak, attack, hold, release){
 }
 function sfxClick(){
   if (!canPlay()) return;
+  if (audio.custom.seal){ playBuf(audio.custom.seal); return; }
+  if (playS("seal", { gain: 0.9 })){ playS("sparkle", { gain: 0.25, rate: 1.6 }); return; }
   const c = audio.ctx, t = c.currentTime, o = c.createOscillator(), g = c.createGain();
   o.type = "triangle"; o.frequency.setValueAtTime(620, t); o.frequency.exponentialRampToValueAtTime(1100, t + 0.06);
   env(g, t, 0.18, 0.005, 0.02, 0.08);
@@ -1252,6 +1743,7 @@ function bindSettings(){
    ========================================================= */
 loadSettings();
 loadData();
+preloadSounds();
 buildSealGrid();
 buildTechList();
 updateSelected();
