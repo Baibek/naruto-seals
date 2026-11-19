@@ -1,0 +1,1272 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ниндзя мөрлері — MediaPipe</title>
+<style>
+:root{
+  --bg:#0c0a09; --panel:#16120e; --panel2:#1e1812; --line:#34281c; --line2:#4a3825;
+  --text:#f4ebe1; --muted:#a8968a; --accent:#ff7a1a; --accent2:#ffb347; --accent-dim:#7a3a0c;
+  --danger:#e5484d; --blue:#5cc8ff; --ok:#4ade80;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  background:radial-gradient(1200px 600px at 15% -10%, #2b1608 0, transparent 60%), var(--bg);
+  color:var(--text); font:14px/1.45 system-ui,"Segoe UI",Roboto,"Noto Sans",Arial,sans-serif;
+}
+button{font:inherit;color:inherit}
+header{display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--line);background:rgba(12,10,9,.7)}
+.logo{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,#ff9a3d,#c4410a);font-weight:900;font-size:18px;box-shadow:0 0 18px rgba(255,122,26,.45)}
+header h1{font-size:17px;margin:0;letter-spacing:.5px}
+header h1 span{color:var(--accent)}
+#status{margin-left:auto;color:var(--muted);font-size:12.5px;text-align:right}
+#status b{color:var(--accent2);font-weight:600}
+
+main{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:16px;padding:16px;align-items:start}
+@media (max-width:1050px){main{grid-template-columns:1fr}}
+
+/* ---- Сахна ---- */
+.stage{position:relative;border-radius:14px;overflow:hidden;background:#000;border:1px solid var(--line2);box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.stage canvas{display:block;width:100%;height:auto}
+#video{display:none}
+.hud{position:absolute;pointer-events:none;font-variant-numeric:tabular-nums}
+.glass{background:rgba(10,8,6,.62);border:1px solid rgba(255,140,40,.25);border-radius:12px;backdrop-filter:blur(6px)}
+#hudSeal{top:12px;left:12px;padding:10px 14px;min-width:210px;display:flex;gap:12px;align-items:center}
+#hudSeal .kanji{width:58px;height:58px;border-radius:10px;display:grid;place-items:center;font-size:36px;font-weight:700;background:rgba(255,122,26,.12);border:1px solid rgba(255,122,26,.35);color:var(--accent2)}
+#hudSeal.pulse .kanji{animation:pulse .45s ease-out}
+@keyframes pulse{0%{transform:scale(1.35);background:rgba(255,122,26,.7);color:#fff}100%{transform:scale(1)}}
+#hudSeal .nm{font-size:18px;font-weight:700}
+#hudSeal .meta{font-size:12px;color:var(--muted)}
+#hudSeal .meta b{color:var(--text);font-weight:600}
+.bar{height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .08s linear}
+#hudRight{top:12px;right:12px;padding:8px 12px;font-size:12px;color:var(--muted);text-align:right}
+#rec{display:none;color:#fff;background:var(--danger);border-radius:6px;padding:3px 8px;margin-top:6px;font-weight:700;animation:blink 1s infinite}
+#rec.on{display:block}
+@keyframes blink{50%{opacity:.6}}
+#hudSeq{left:50%;bottom:14px;transform:translateX(-50%);padding:8px 12px;min-width:240px;max-width:92%;text-align:center}
+#hudSeq .lbl{font-size:11px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase}
+#chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:6px;min-height:30px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:rgba(255,122,26,.16);border:1px solid rgba(255,122,26,.45);font-size:13px;white-space:nowrap}
+.chip .k{font-weight:700;color:var(--accent2)}
+.chip.new{animation:chipIn .3s ease-out}
+@keyframes chipIn{from{transform:scale(.4);opacity:0}}
+.chip.empty{background:transparent;border-style:dashed;border-color:rgba(255,255,255,.2);color:var(--muted)}
+#seqBar{margin-top:6px}
+
+#banner{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;text-align:center}
+#banner .wrap{opacity:0}
+#banner.show .wrap{animation:banner 2.9s cubic-bezier(.2,.8,.2,1) forwards}
+#banner .jp{font-size:clamp(16px,2.6vw,30px);letter-spacing:6px;color:#fff;opacity:.85}
+#banner .name{font-size:clamp(28px,5.2vw,68px);font-weight:900;letter-spacing:1px;line-height:1.05;
+  background:linear-gradient(180deg,#fff6d8 0%,var(--bc,#ffb347) 45%,#a33a00 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 14px var(--bc,#ff7a1a)) drop-shadow(0 4px 2px rgba(0,0,0,.8));-webkit-text-stroke:1px rgba(0,0,0,.35)}
+@keyframes banner{
+  0%{opacity:0;transform:scale(2.4) skewX(-12deg);filter:blur(8px)}
+  12%{opacity:1;transform:scale(.94) skewX(0);filter:blur(0)}
+  20%{transform:scale(1.04)}
+  28%{transform:scale(1)}
+  78%{opacity:1;transform:scale(1.02)}
+  100%{opacity:0;transform:scale(1.12) translateY(-20px)}
+}
+
+#startOverlay{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,rgba(60,25,5,.85),rgba(0,0,0,.92));text-align:center;padding:20px}
+#startOverlay.hidden{display:none}
+#startOverlay .big{font-size:64px;line-height:1;margin-bottom:8px;color:var(--accent)}
+#startOverlay p{color:var(--muted);max-width:480px;margin:8px auto 18px}
+#startErr{color:#ff8b8b;margin-top:12px;max-width:520px}
+
+/* ---- Батырмалар ---- */
+.btn{border:1px solid var(--line2);background:var(--panel2);border-radius:9px;padding:7px 12px;cursor:pointer;transition:.15s;font-size:13px}
+.btn:hover{border-color:var(--accent);background:#2a1f15}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:linear-gradient(180deg,#ff8a2e,#e0600c);border-color:#ff9a45;color:#1a0d03;font-weight:700}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.big{padding:12px 22px;font-size:16px;border-radius:12px}
+.btn.danger:hover{border-color:var(--danger);color:#ffb0b0}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---- Панель ---- */
+aside{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.card h2{margin:0 0 10px;font-size:13px;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent2);display:flex;align-items:center;gap:8px}
+.card h2 small{margin-left:auto;color:var(--muted);text-transform:none;letter-spacing:0;font-weight:400;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.seal{position:relative;border:1px solid var(--line2);background:var(--panel2);border-radius:10px;padding:8px 4px 6px;cursor:pointer;text-align:center;transition:.15s}
+.seal:hover{border-color:var(--accent-dim)}
+.seal .k{font-size:24px;font-weight:700;line-height:1.1}
+.seal .n{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seal .c{position:absolute;top:3px;right:4px;font-size:10px;padding:0 5px;border-radius:6px;background:#2c2218;color:var(--muted)}
+.seal .c.has{background:rgba(74,222,128,.15);color:var(--ok)}
+.seal.sel{border-color:var(--accent);background:linear-gradient(180deg,#3a210d,#22170f);box-shadow:0 0 0 1px var(--accent) inset}
+.seal.sel .n{color:var(--text)}
+.seal.live{box-shadow:0 0 14px rgba(255,122,26,.75);border-color:var(--accent2)}
+.seal.live .k{color:var(--accent2)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.train-sel{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.train-sel .k{font-size:30px;font-weight:700;color:var(--accent2);width:46px;text-align:center}
+.train-sel .t{flex:1}
+.train-sel .t b{font-size:16px}
+.muted{color:var(--muted);font-size:12.5px}
+#recBtn{flex:1;min-width:160px;user-select:none;-webkit-user-select:none;touch-action:none}
+#recBtn.on{background:var(--danger);border-color:#ff7b7f;color:#fff}
+kbd{background:#2c2218;border:1px solid var(--line2);border-bottom-width:2px;border-radius:5px;padding:0 6px;font-size:12px}
+.tech{border:1px solid var(--line);background:var(--panel2);border-radius:11px;padding:10px;margin-bottom:8px}
+.tech:last-child{margin-bottom:0}
+.tech .hd{display:flex;align-items:center;gap:8px}
+.tech .hd .nm{font-weight:700}
+.tech .hd .jp{color:var(--muted);font-size:12px}
+.tech .hd .btn{margin-left:auto;padding:4px 10px;font-size:12px}
+.tech .seq{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.tech .seq span{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}
+.tech .seq span.done{border-color:var(--accent);color:#fff;background:rgba(255,122,26,.22)}
+.tech.active{border-color:var(--accent);box-shadow:0 0 18px rgba(255,122,26,.25)}
+.set{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;margin-bottom:10px}
+.set label{font-size:13px}
+.set output{font-variant-numeric:tabular-nums;color:var(--accent2);font-size:13px}
+.set input[type=range]{grid-column:1/3;width:100%;accent-color:var(--accent)}
+.check{display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer}
+.check input{accent-color:var(--accent);width:16px;height:16px}
+
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(30px);opacity:0;background:#241a11;border:1px solid var(--accent);padding:10px 16px;border-radius:10px;transition:.25s;z-index:20;max-width:90vw}
+#toast.show{opacity:1;transform:translateX(-50%)}
+#toast.err{border-color:var(--danger)}
+footer{color:var(--muted);font-size:12px;padding:0 16px 18px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">忍</div>
+  <h1>Ниндзя <span>мөрлері</span> · қол белгілерін тану</h1>
+  <div id="status">Дайындалуда…</div>
+</header>
+
+<main>
+  <section>
+    <div class="stage" id="stage">
+      <video id="video" playsinline muted></video>
+      <canvas id="canvas" width="1280" height="720"></canvas>
+
+      <div class="hud glass" id="hudSeal">
+        <div class="kanji" id="hudKanji">—</div>
+        <div style="flex:1">
+          <div class="nm" id="hudName">Мөр жоқ</div>
+          <div class="meta">Сенімділік: <b id="hudConf">—</b> · Қашықтық: <b id="hudDist">—</b></div>
+          <div class="bar" title="Тұрақтылық"><i id="stabBar"></i></div>
+        </div>
+      </div>
+
+      <div class="hud glass" id="hudRight">
+        <div id="hudFps">— FPS</div>
+        <div id="hudHands">Қол: 0</div>
+        <div id="rec">● ЖАЗУ</div>
+      </div>
+
+      <div class="hud glass" id="hudSeq">
+        <div class="lbl">Тізбек</div>
+        <div id="chips"><span class="chip empty">мөр жасаңыз…</span></div>
+        <div class="bar" id="seqBar"><i id="seqTimer"></i></div>
+      </div>
+
+      <div id="banner"><div class="wrap"><div class="jp" id="bannerJp"></div><div class="name" id="bannerName"></div></div></div>
+
+      <div id="startOverlay">
+        <div>
+          <div class="big">忍</div>
+          <h2 style="margin:0">Чакраны жинауға дайынсыз ба?</h2>
+          <p>Камера тек сіздің браузеріңізде өңделеді, ешқайда жіберілмейді. Алдымен әр мөрді оң жақтағы панельде үйретіңіз.</p>
+          <button class="btn primary big" id="startBtn" disabled>Модельдер жүктелуде…</button>
+          <div id="startErr"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card">
+      <h2>Мөрлер <small id="totalCount">0 үлгі</small></h2>
+      <div class="grid" id="sealGrid"></div>
+    </div>
+
+    <div class="card">
+      <h2>Үйрету</h2>
+      <div class="train-sel">
+        <div class="k" id="selKanji">子</div>
+        <div class="t"><b id="selName">Тышқан</b><div class="muted"><span id="selCount">0</span> үлгі жазылған</div></div>
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <button class="btn primary" id="recBtn">● Жазу (басып тұрыңыз)</button>
+      </div>
+      <div class="muted" style="margin-bottom:10px">Мөрді таңдап, қолыңызды дайындап, <kbd>Space</kbd> пернесін басып тұрыңыз. Әр мөрге 80–150 үлгі жеткілікті.</div>
+      <div class="row">
+        <button class="btn" id="exportBtn">⇩ Экспорт JSON</button>
+        <button class="btn" id="importBtn">⇧ Импорт JSON</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn danger" id="clearSelBtn">Таңдалғанды өшіру</button>
+        <button class="btn danger" id="clearAllBtn">Барлығын өшіру</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Техникалар</h2>
+      <div id="techList"></div>
+    </div>
+
+    <div class="card">
+      <h2>Баптаулар</h2>
+      <div class="set">
+        <label for="thr">Қашықтық шегі</label><output id="thrOut"></output>
+        <input type="range" id="thr" min="0.05" max="0.8" step="0.01">
+      </div>
+      <div class="set">
+        <label for="stab">Тұрақтылық (кадр)</label><output id="stabOut"></output>
+        <input type="range" id="stab" min="2" max="20" step="1">
+      </div>
+      <label class="check"><input type="checkbox" id="showLm"> Қол нүктелерін көрсету</label>
+      <label class="check"><input type="checkbox" id="sound"> Дыбыс</label>
+      <div class="muted" style="margin-top:6px">Шек кіші болса — тану қатаңырақ, бірақ сирек. Қате мөрлер көп танылса, шекті азайтыңыз.</div>
+    </div>
+  </aside>
+</main>
+<footer>MediaPipe Tasks Vision (HandLandmarker + ImageSegmenter) · KNN (k=7) · деректер тек браузердің localStorage-ында сақталады.</footer>
+<div id="toast"></div>
+
+<script type="module">
+import { FilesetResolver, HandLandmarker, ImageSegmenter } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+/* =========================================================
+   Константалар
+   ========================================================= */
+const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+const HAND_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+const SEG_URL  = "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite";
+
+const SEALS = [
+  { id:"rat",    name:"Тышқан",   kanji:"子" },
+  { id:"ox",     name:"Сиыр",     kanji:"丑" },
+  { id:"tiger",  name:"Жолбарыс", kanji:"寅" },
+  { id:"hare",   name:"Қоян",     kanji:"卯" },
+  { id:"dragon", name:"Айдаһар",  kanji:"辰" },
+  { id:"snake",  name:"Жылан",    kanji:"巳" },
+  { id:"horse",  name:"Жылқы",    kanji:"午" },
+  { id:"ram",    name:"Қошқар",   kanji:"未" },
+  { id:"monkey", name:"Мешін",    kanji:"申" },
+  { id:"bird",   name:"Тауық",    kanji:"酉" },
+  { id:"dog",    name:"Ит",       kanji:"戌" },
+  { id:"boar",   name:"Доңыз",    kanji:"亥" },
+  { id:"cross",  name:"Крест",    kanji:"十" },
+];
+const SEAL = Object.fromEntries(SEALS.map(s => [s.id, s]));
+
+const TECHS = [
+  { id:"clones",  name:"Каге Бунсин но Дзюцу!",      jp:"影分身の術",       seq:["cross"], color:"#ffd27a" },
+  { id:"fire",    name:"Катон: Гоукакюу но Дзюцу!",  jp:"火遁・豪火球の術", seq:["snake","ram","monkey","boar","horse","tiger"], color:"#ff7a1a" },
+  { id:"chidori", name:"Чидори!",                    jp:"千鳥",             seq:["ox","hare","monkey"], color:"#5cc8ff" },
+];
+
+const DIM = 2 * 21 * 3;          // 2 қол × 21 нүкте × (x,y,z)
+const K = 7;                     // KNN көршілер саны
+const MIN_CONF = 0.6;            // ең аз сенімділік
+const MAX_PER_SEAL = 300;        // бір мөрге ең көп үлгі
+const SEQ_TIMEOUT = 3500;        // мс — тізбек буфері тазаратын уақыт
+const LS_DATA = "naruto-seals-data-v1";
+const LS_SET  = "naruto-seals-settings-v1";
+
+/* =========================================================
+   Күй
+   ========================================================= */
+const state = {
+  samples: [],                 // {label, f: Float32Array}
+  counts: {},
+  selected: "rat",
+  recording: false,
+  recLimitWarned: false,
+  settings: { threshold: 0.22, stability: 6, showLandmarks: true, sound: true },
+  hands: null,                 // HandLandmarker соңғы нәтижесі
+  pred: null,                  // {label, conf, dist}
+  accepted: null,              // шекті өткен мөр немесе null
+  stable: { cand: null, count: 0, committed: null },
+  buffer: [], lastCommit: 0,
+  camReady: false,
+};
+
+const $ = s => document.querySelector(s);
+const video = $("#video"), canvas = $("#canvas"), ctx = canvas.getContext("2d");
+let W = canvas.width, H = canvas.height;
+
+/* =========================================================
+   Сақтау / жүктеу
+   ========================================================= */
+function loadSettings(){
+  try { Object.assign(state.settings, JSON.parse(localStorage.getItem(LS_SET) || "{}")); } catch {}
+}
+function saveSettings(){ try { localStorage.setItem(LS_SET, JSON.stringify(state.settings)); } catch {} }
+
+function serialize(){
+  return {
+    format: "naruto-seals", version: 1, dims: DIM, created: new Date().toISOString(),
+    samples: state.samples.map(s => ({ l: s.label, f: Array.from(s.f, v => Math.round(v * 1000) / 1000) })),
+  };
+}
+function parseSamples(obj){
+  const arr = Array.isArray(obj) ? obj : obj && obj.samples;
+  if (!Array.isArray(arr)) throw new Error("JSON ішінде samples массиві жоқ");
+  const out = [];
+  for (const s of arr){
+    const label = s.l ?? s.label, f = s.f ?? s.features;
+    if (!SEAL[label] || !Array.isArray(f) || f.length !== DIM) continue;
+    out.push({ label, f: Float32Array.from(f, v => +v || 0) });
+  }
+  return out;
+}
+function saveData(){
+  try { localStorage.setItem(LS_DATA, JSON.stringify(serialize())); }
+  catch (e){ toast("localStorage-қа сақталмады (орын жетпеуі мүмкін). JSON экспорт жасаңыз.", true); console.warn(e); }
+}
+function loadData(){
+  try {
+    const raw = localStorage.getItem(LS_DATA);
+    if (raw) state.samples = parseSamples(JSON.parse(raw));
+  } catch (e){ console.warn("Деректер оқылмады", e); }
+  recount();
+}
+function recount(){
+  state.counts = Object.fromEntries(SEALS.map(s => [s.id, 0]));
+  for (const s of state.samples) state.counts[s.label]++;
+}
+
+/* =========================================================
+   Белгілер (features)
+   ========================================================= */
+function handLabel(res, i){
+  const h = (res.handedness && res.handedness[i]) || (res.handednesses && res.handednesses[i]);
+  return (h && h[0] && h[0].categoryName) || "Right";
+}
+function meanX(lm){ let s = 0; for (const p of lm) s += p.x; return s / lm.length; }
+
+// Қолдарды тұрақты слоттарға бөлу: 0 = "Left", 1 = "Right"
+function handSlots(res){
+  const L = res && res.landmarks;
+  if (!L || !L.length) return null;
+  const slots = [null, null];
+  if (L.length === 1){
+    slots[handLabel(res, 0) === "Left" ? 0 : 1] = L[0];
+  } else {
+    const a = handLabel(res, 0), b = handLabel(res, 1);
+    if (a !== b){
+      slots[a === "Left" ? 0 : 1] = L[0];
+      slots[b === "Left" ? 0 : 1] = L[1];
+    } else {
+      // Бірдей белгі берілсе — кескіндегі x бойынша ажыратамыз
+      const [l, r] = meanX(L[0]) <= meanX(L[1]) ? [L[0], L[1]] : [L[1], L[0]];
+      slots[0] = l; slots[1] = r;
+    }
+  }
+  return slots;
+}
+
+function extractFeatures(res){
+  const slots = handSlots(res);
+  if (!slots) return null;
+  const aspect = W / H;
+  let cx = 0, cy = 0, n = 0;
+  for (const lm of slots) if (lm) for (const p of lm){ cx += p.x * aspect; cy += p.y; n++; }
+  if (!n) return null;
+  cx /= n; cy /= n;
+  let ss = 0;
+  for (const lm of slots) if (lm) for (const p of lm){ const dx = p.x * aspect - cx, dy = p.y - cy; ss += dx*dx + dy*dy; }
+  const scale = Math.sqrt(ss / n) || 1;
+  const f = new Float32Array(DIM);   // көрінбейтін қол — нөлдер
+  for (let s = 0; s < 2; s++){
+    const lm = slots[s]; if (!lm) continue;
+    for (let j = 0; j < 21; j++){
+      const p = lm[j], o = s * 63 + j * 3;
+      f[o]   = (p.x * aspect - cx) / scale;
+      f[o+1] = (p.y - cy) / scale;
+      f[o+2] = (p.z * aspect) / scale * 0.5;   // z шулы — салмағы азырақ
+    }
+  }
+  return f;
+}
+
+/* =========================================================
+   KNN жіктеуіш
+   ========================================================= */
+function classify(f){
+  const S = state.samples, n = S.length;
+  if (!n) return null;
+  const k = Math.min(K, n);
+  const bd = new Float64Array(k).fill(Infinity), bi = new Int32Array(k).fill(-1);
+  for (let i = 0; i < n; i++){
+    const g = S[i].f, worst = bd[k-1];
+    let d = 0;
+    for (let j = 0; j < DIM; j++){ const t = g[j] - f[j]; d += t*t; if ((j & 15) === 15 && d >= worst) break; }
+    if (d >= worst) continue;
+    let p = k - 1;
+    while (p > 0 && bd[p-1] > d){ bd[p] = bd[p-1]; bi[p] = bi[p-1]; p--; }
+    bd[p] = d; bi[p] = i;
+  }
+  const votes = {}, nearest = {};
+  for (let q = 0; q < k; q++){
+    if (bi[q] < 0) continue;
+    const lab = S[bi[q]].label;
+    votes[lab] = (votes[lab] || 0) + 1;
+    if (!(lab in nearest)) nearest[lab] = bd[q];
+  }
+  let best = null;
+  for (const lab in votes){
+    if (!best || votes[lab] > votes[best] || (votes[lab] === votes[best] && nearest[lab] < nearest[best])) best = lab;
+  }
+  return { label: best, conf: votes[best] / k, dist: Math.sqrt(nearest[best] / DIM) };  // RMS қашықтық
+}
+
+/* =========================================================
+   Тұрақтылық + тізбек
+   ========================================================= */
+function updateStable(label){
+  const st = state.stable;
+  if (label === st.cand) st.count++; else { st.cand = label; st.count = 1; }
+  if (st.count >= state.settings.stability){
+    if (label){ if (label !== st.committed){ st.committed = label; commitSeal(label); } }
+    else st.committed = null;
+  }
+}
+
+function commitSeal(id){
+  state.buffer.push(id);
+  if (state.buffer.length > 14) state.buffer.shift();
+  state.lastCommit = performance.now();
+  sfxClick();
+  const hs = $("#hudSeal"); hs.classList.remove("pulse"); void hs.offsetWidth; hs.classList.add("pulse");
+  renderChips(true);
+  checkTechniques();
+}
+
+function isSubsequence(seq, buf){
+  let i = 0;
+  for (const b of buf){ if (b === seq[i]) i++; if (i === seq.length) return true; }
+  return false;
+}
+function progressOf(seq, buf){
+  let i = 0;
+  for (const b of buf) if (i < seq.length && b === seq[i]) i++;
+  return i;
+}
+function checkTechniques(){
+  const buf = state.buffer, last = buf[buf.length - 1];
+  const sorted = [...TECHS].sort((a, b) => b.seq.length - a.seq.length);
+  for (const t of sorted){
+    if (t.seq[t.seq.length - 1] === last && isSubsequence(t.seq, buf)){
+      triggerTechnique(t.id);
+      state.buffer = [];
+      renderChips();
+      return;
+    }
+  }
+  renderTechProgress();
+}
+function clearBuffer(){ state.buffer = []; renderChips(); }
+
+/* =========================================================
+   Үйрету
+   ========================================================= */
+function addSample(f){
+  const id = state.selected;
+  if (state.counts[id] >= MAX_PER_SEAL){
+    if (!state.recLimitWarned){ toast(`«${SEAL[id].name}» үшін ең көбі ${MAX_PER_SEAL} үлгі.`, true); state.recLimitWarned = true; }
+    return;
+  }
+  state.samples.push({ label: id, f });
+  state.counts[id]++;
+}
+function startRec(){
+  initAudio();
+  if (!state.camReady){ toast("Алдымен камераны қосыңыз."); return; }
+  if (state.recording) return;
+  state.recording = true; state.recLimitWarned = false;
+  $("#rec").classList.add("on"); $("#recBtn").classList.add("on");
+}
+function stopRec(){
+  if (!state.recording) return;
+  state.recording = false;
+  $("#rec").classList.remove("on"); $("#recBtn").classList.remove("on");
+  saveData(); updateCounts();
+}
+
+/* =========================================================
+   Модельдер
+   ========================================================= */
+let fileset = null, handLandmarker = null, segmenter = null;
+let handDelegate = "", segDelegate = "", handFallbackBusy = false, segFailed = false;
+
+const handOpts = d => ({
+  baseOptions: { modelAssetPath: HAND_URL, delegate: d },
+  runningMode: "VIDEO", numHands: 2,
+  minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+});
+const segOpts = d => ({
+  baseOptions: { modelAssetPath: SEG_URL, delegate: d },
+  runningMode: "VIDEO", outputCategoryMask: false, outputConfidenceMasks: true,
+});
+async function createWithFallback(make){
+  try { return { task: await make("GPU"), delegate: "GPU" }; }
+  catch (e){ console.warn("GPU delegate жұмыс істемеді, CPU-ға ауысамыз:", e); return { task: await make("CPU"), delegate: "CPU" }; }
+}
+async function loadModels(){
+  setStatus("Модельдер жүктелуде…");
+  fileset = await FilesetResolver.forVisionTasks(WASM_URL);
+  const h = await createWithFallback(d => HandLandmarker.createFromOptions(fileset, handOpts(d)));
+  handLandmarker = h.task; handDelegate = h.delegate;
+  updateStatus();
+  // Сегментер фонда жүктеледі (тек клон эффектісінде қолданылады)
+  createWithFallback(d => ImageSegmenter.createFromOptions(fileset, segOpts(d)))
+    .then(r => { segmenter = r.task; segDelegate = r.delegate; updateStatus(); })
+    .catch(e => { segFailed = true; console.warn("Сегментер жүктелмеді", e); updateStatus(); });
+}
+function fallbackHandToCPU(){
+  if (handFallbackBusy || handDelegate !== "GPU") return;
+  handFallbackBusy = true;
+  try { handLandmarker && handLandmarker.close(); } catch {}
+  handLandmarker = null;
+  HandLandmarker.createFromOptions(fileset, handOpts("CPU"))
+    .then(t => { handLandmarker = t; handDelegate = "CPU"; updateStatus(); toast("GPU қатесі — CPU режиміне ауыстық."); })
+    .catch(e => { console.error(e); setStatus("Қол моделі жұмыс істемейді"); })
+    .finally(() => { handFallbackBusy = false; });
+}
+function setStatus(html){ $("#status").innerHTML = html; }
+function updateStatus(){
+  const seg = segmenter ? `<b>${segDelegate}</b>` : (segFailed ? "қате" : "жүктелуде…");
+  setStatus(`Қол моделі: <b>${handDelegate || "…"}</b> · Сегментер: ${seg}`);
+}
+
+/* =========================================================
+   Камера
+   ========================================================= */
+async function startCamera(){
+  initAudio();
+  const btn = $("#startBtn"), err = $("#startErr");
+  btn.disabled = true; btn.textContent = "Камера қосылуда…"; err.textContent = "";
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)
+      throw new Error("Браузер камераны қолдамайды. Файлды http://localhost арқылы ашыңыз (file:// емес).");
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false,
+    });
+    video.srcObject = stream;
+    await video.play();
+    await new Promise(r => video.videoWidth ? r() : video.addEventListener("loadedmetadata", r, { once: true }));
+    resizeTo(video.videoWidth, video.videoHeight);
+    state.camReady = true;
+    $("#startOverlay").classList.add("hidden");
+  } catch (e){
+    console.error(e);
+    btn.disabled = false; btn.textContent = "Қайта көру";
+    err.textContent = (e && e.name === "NotAllowedError") ? "Камераға рұқсат берілмеді. Браузер баптауларынан рұқсат беріңіз." : ("Қате: " + (e.message || e));
+  }
+}
+function resizeTo(w, h){
+  W = canvas.width = w; H = canvas.height = h;
+  personCanvas.width = w; personCanvas.height = h;
+}
+
+/* =========================================================
+   Сегментация (тек клон кезінде)
+   ========================================================= */
+const personCanvas = document.createElement("canvas");
+const pctx = personCanvas.getContext("2d");
+const maskCanvas = document.createElement("canvas");
+const mctx = maskCanvas.getContext("2d");
+let maskImg = null, maskPrev = null, maskReady = false, personCx = null;
+
+function runSegmentation(ts){
+  try {
+    segmenter.segmentForVideo(video, ts, result => {
+      const masks = result.confidenceMasks;
+      if (!masks || !masks.length) return;
+      const m = masks.length > 1 ? masks[1] : masks[0];
+      const w = m.width, h = m.height, data = m.getAsFloat32Array();
+      if (!maskImg || maskImg.width !== w || maskImg.height !== h){
+        maskCanvas.width = w; maskCanvas.height = h;
+        maskImg = mctx.createImageData(w, h);
+        maskPrev = new Float32Array(w * h);
+        for (let i = 0; i < w * h; i++){ maskImg.data[i*4] = maskImg.data[i*4+1] = maskImg.data[i*4+2] = 255; }
+      }
+      // Полярлықты тексеру: жоғарғы бұрыштар әдетте фон
+      const corner = (data[0] + data[w-1] + data[w*2] + data[w*3-1]) / 4;
+      const invert = corner > 0.6;
+      const px = maskImg.data;
+      let sx = 0, sa = 0;
+      for (let i = 0, n = w * h; i < n; i++){
+        let c = invert ? 1 - data[i] : data[i];
+        c = c < 0.3 ? 0 : c > 0.7 ? 1 : (c - 0.3) * 2.5;
+        const a = maskPrev[i] * 0.35 + c * 0.65;          // уақыт бойынша тегістеу
+        maskPrev[i] = a;
+        px[i*4+3] = a * 255;
+        if (a > 0.5){ sx += i % w; sa++; }
+      }
+      mctx.putImageData(maskImg, 0, 0);
+      maskReady = true;
+      if (sa > 200){
+        const cx = (sx / sa) / w * W;
+        personCx = personCx == null ? cx : personCx * 0.85 + cx * 0.15;
+      }
+    });
+  } catch (e){ console.warn("Сегментация қатесі", e); }
+}
+function fallbackMask(){
+  // Сегментер әлі дайын болмаса — эллипс тәрізді жұмсақ маска
+  maskCanvas.width = 64; maskCanvas.height = 64; maskImg = null;
+  const g = mctx.createRadialGradient(32, 40, 4, 32, 40, 30);
+  g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.7, "rgba(255,255,255,.85)"); g.addColorStop(1, "rgba(255,255,255,0)");
+  mctx.clearRect(0, 0, 64, 64); mctx.fillStyle = g;
+  mctx.save(); mctx.translate(32, 40); mctx.scale(0.6, 1); mctx.beginPath(); mctx.arc(0, 0, 32, 0, Math.PI*2); mctx.restore(); mctx.fill();
+}
+
+/* =========================================================
+   Спрайттар мен бөлшектер
+   ========================================================= */
+function makeSprite(size, stops){
+  const c = document.createElement("canvas"); c.width = c.height = size;
+  const g = c.getContext("2d"), r = size / 2;
+  const gr = g.createRadialGradient(r, r, 0, r, r, r);
+  for (const [o, col] of stops) gr.addColorStop(o, col);
+  g.fillStyle = gr; g.fillRect(0, 0, size, size);
+  return c;
+}
+function makeSmoke(size, seed){
+  const c = document.createElement("canvas"); c.width = c.height = size;
+  const g = c.getContext("2d");
+  let s = seed; const rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+  for (let i = 0; i < 9; i++){
+    const x = size * (0.3 + rnd() * 0.4), y = size * (0.3 + rnd() * 0.4), r = size * (0.18 + rnd() * 0.17);
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, "rgba(240,238,235,.55)"); gr.addColorStop(0.6, "rgba(215,212,208,.28)"); gr.addColorStop(1, "rgba(200,200,200,0)");
+    g.fillStyle = gr; g.fillRect(0, 0, size, size);
+  }
+  return c;
+}
+const SPR = {
+  fire:   makeSprite(64, [[0,"rgba(255,255,225,1)"],[0.18,"rgba(255,226,130,.95)"],[0.42,"rgba(255,128,24,.62)"],[0.72,"rgba(200,40,0,.22)"],[1,"rgba(120,0,0,0)"]]),
+  ember:  makeSprite(16, [[0,"rgba(255,255,200,1)"],[0.4,"rgba(255,170,40,.9)"],[1,"rgba(255,60,0,0)"]]),
+  glowO:  makeSprite(128,[[0,"rgba(255,200,90,.85)"],[0.35,"rgba(255,110,20,.35)"],[1,"rgba(255,60,0,0)"]]),
+  spark:  makeSprite(16, [[0,"rgba(255,255,255,1)"],[0.35,"rgba(170,230,255,.95)"],[1,"rgba(40,140,255,0)"]]),
+  glowB:  makeSprite(128,[[0,"rgba(220,245,255,.95)"],[0.18,"rgba(120,200,255,.6)"],[0.5,"rgba(40,120,255,.18)"],[1,"rgba(0,60,255,0)"]]),
+  smoke:  [makeSmoke(128, 7), makeSmoke(128, 31), makeSmoke(128, 77)],
+};
+
+const particles = [];
+const MAX_PARTICLES = 1400;
+function emit(p){
+  if (particles.length >= MAX_PARTICLES) return;
+  p.max = p.life; p.size0 = p.size;
+  particles.push(p);
+}
+function updateParticles(dt){
+  for (let i = particles.length - 1; i >= 0; i--){
+    const p = particles[i];
+    p.life -= dt;
+    if (p.life <= 0){ particles[i] = particles[particles.length - 1]; particles.pop(); continue; }
+    const k = Math.max(0, 1 - (p.drag || 0) * dt);
+    p.vx *= k; p.vy *= k; p.vy += (p.g || 0) * dt;
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.size = Math.max(1, p.size + (p.grow || 0) * dt);
+  }
+}
+function drawParticles(){
+  // 1-өту: түтін (қалыпты), 2-өту: от/ұшқын (lighter)
+  for (let pass = 0; pass < 2; pass++){
+    ctx.globalCompositeOperation = pass ? "lighter" : "source-over";
+    for (const p of particles){
+      if ((p.add ? 1 : 0) !== pass) continue;
+      const t = p.life / p.max;
+      ctx.globalAlpha = p.alpha * (p.fadeIn ? Math.min(1, (1 - t) * 6) * t : t);
+      const s = p.size;
+      ctx.drawImage(p.sprite, p.x - s/2, p.y - s/2, s, s);
+    }
+  }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+}
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp01 = x => Math.max(0, Math.min(1, x));
+const easeOut = x => 1 - Math.pow(1 - x, 3);
+
+function puff(x, y, scale = 1){
+  const u = H / 720 * scale;
+  for (let i = 0; i < 26; i++){
+    emit({ x: x + rand(-50,50)*u, y: y + rand(-120,120)*u, vx: rand(-160,160)*u, vy: rand(-170,60)*u,
+      life: rand(0.7, 1.4), size: rand(110, 210)*u, grow: rand(70, 150)*u, drag: 2.6, g: -20*u,
+      sprite: SPR.smoke[i % 3], alpha: 0.95, fadeIn: true });
+  }
+}
+
+/* =========================================================
+   Қол координаттары (айна)
+   ========================================================= */
+const toScreen = p => ({ x: (1 - p.x) * W, y: p.y * H });
+function palmOf(lm){
+  let x = 0, y = 0;
+  for (const i of [0, 5, 9, 13, 17]){ x += lm[i].x; y += lm[i].y; }
+  return toScreen({ x: x / 5, y: y / 5 });
+}
+function palms(){ const L = state.hands && state.hands.landmarks; return L && L.length ? L.map(palmOf) : []; }
+function handsCenter(){
+  const P = palms(); if (!P.length) return null;
+  return { x: P.reduce((s, p) => s + p.x, 0) / P.length, y: P.reduce((s, p) => s + p.y, 0) / P.length };
+}
+
+/* =========================================================
+   Эффекттер
+   ========================================================= */
+const effects = { clones: null, fire: null, chidori: null };
+let shake = 0, tint = null;
+
+function triggerTechnique(id){
+  initAudio();
+  const t = TECHS.find(x => x.id === id);
+  showBanner(t);
+  const now = performance.now();
+  if (id === "clones"){
+    effects.clones = {
+      t0: now, dur: 9,
+      list: [
+        { shift: -0.42, scale: 0.80, delay: 0.00 },
+        { shift:  0.42, scale: 0.80, delay: 0.10 },
+        { shift: -0.23, scale: 0.90, delay: 0.20 },
+        { shift:  0.23, scale: 0.90, delay: 0.30 },
+      ].map(c => ({ ...c, shown: false, gone: false, phase: Math.random() * 6 })),
+    };
+    if (!maskReady) fallbackMask();
+    sfxPoof();
+  } else if (id === "fire"){
+    const c = handsCenter() || { x: W * 0.5, y: H * 0.62 };
+    effects.fire = { t0: now, dur: 3.8, ox: c.x, oy: c.y, dir: c.x < W / 2 ? 1 : -1 };
+    sfxFire();
+  } else if (id === "chidori"){
+    const P = palms();
+    const pos = P.length ? P.reduce((a, b) => (b.x > a.x ? b : a)) : { x: W * 0.6, y: H * 0.6 };
+    effects.chidori = { t0: now, dur: 7, pos: { ...pos } };
+    sfxChidori(7);
+  }
+  renderTechProgress(id);
+}
+
+function drawClones(now){
+  const e = effects.clones;
+  const t = (now - e.t0) / 1000;
+  const cx = personCx ?? W / 2;              // кескін (айнасыз) координатасы
+  if (state.camReady){
+    pctx.globalCompositeOperation = "source-over";
+    pctx.clearRect(0, 0, W, H);
+    pctx.drawImage(video, 0, 0, W, H);
+    pctx.globalCompositeOperation = "destination-in";
+    pctx.drawImage(maskCanvas, 0, 0, W, H);
+    pctx.globalCompositeOperation = "source-over";
+  }
+  let alive = false;
+  ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1);     // айна кеңістігі
+  for (const c of e.list){
+    const appear = 0.15 + c.delay, vanish = e.dur + c.delay;
+    const s = c.scale;
+    const target = cx + c.shift * W;
+    const sway = Math.sin(t * 1.6 + c.phase) * W * 0.006;
+    const dx = target - s * cx + sway, dy = H * (1 - s) * 0.55;
+    const scr = { x: W - target, y: dy + s * H * 0.5 };
+    if (!c.shown && t >= appear){ c.shown = true; puff(scr.x, scr.y, s); }
+    if (c.shown && !c.gone && t >= vanish){ c.gone = true; puff(scr.x, scr.y, s); if (c === e.list[0]) sfxPoof(); }
+    if (!c.gone) alive = true;
+    if (c.shown && !c.gone && state.camReady){
+      ctx.globalAlpha = Math.min(1, (t - appear) * 6);
+      ctx.drawImage(personCanvas, dx, dy, W * s, H * s);
+    }
+  }
+  ctx.globalAlpha = 1;
+  if (state.camReady) ctx.drawImage(personCanvas, 0, 0, W, H);   // нақты адам — алдыңғы қабатта
+  ctx.restore();
+  if (!alive && t > e.dur + 1.6) effects.clones = null;
+}
+
+function drawFire(now){
+  const e = effects.fire;
+  const t = (now - e.t0) / 1000;
+  if (t > e.dur){ effects.fire = null; return; }
+  const grow = easeOut(clamp01(t / 0.7));
+  const fade = t > e.dur - 0.9 ? (e.dur - t) / 0.9 : 1;
+  const R = (0.035 + 0.27 * grow) * H * (1 + 0.05 * Math.sin(t * 31) + 0.03 * Math.sin(t * 17));
+  const cx = e.ox + e.dir * grow * W * 0.16, cy = e.oy - grow * H * 0.14;
+  const u = H / 720;
+
+  ctx.globalCompositeOperation = "lighter";
+  // Қолдан шарға дейінгі от ағыны
+  if (t < 1.3){
+    const n = 6;
+    for (let i = 0; i < n; i++){
+      const k = Math.random();
+      emit({ x: e.ox + (cx - e.ox) * k, y: e.oy + (cy - e.oy) * k, vx: rand(-40,40)*u, vy: rand(-80,-20)*u,
+        life: rand(0.25, 0.5), size: rand(40, 90)*u, grow: -40*u, sprite: SPR.fire, alpha: 0.9, add: true });
+    }
+  }
+  ctx.globalAlpha = 0.85 * fade;
+  ctx.drawImage(SPR.glowO, cx - R*2.4, cy - R*2.4, R*4.8, R*4.8);
+  const g = ctx.createRadialGradient(cx, cy, R * 0.05, cx, cy, R);
+  g.addColorStop(0, "rgba(255,255,230,1)"); g.addColorStop(0.3, "rgba(255,215,110,.95)");
+  g.addColorStop(0.65, "rgba(255,110,15,.75)"); g.addColorStop(1, "rgba(180,30,0,0)");
+  ctx.fillStyle = g; ctx.globalAlpha = fade;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+
+  const count = Math.round(22 * fade);
+  for (let i = 0; i < count; i++){
+    const a = Math.random() * Math.PI * 2, r = R * Math.sqrt(Math.random()) * 0.9;
+    const sp = rand(30, 170) * u;
+    emit({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 70*u,
+      life: rand(0.35, 0.85), size: R * rand(0.35, 0.8), grow: -R * 0.5, drag: 1.2, g: -120*u,
+      sprite: SPR.fire, alpha: 0.75, add: true });
+  }
+  for (let i = 0; i < 3; i++){
+    const a = Math.random() * Math.PI * 2;
+    emit({ x: cx + Math.cos(a) * R * 0.8, y: cy + Math.sin(a) * R * 0.8, vx: Math.cos(a) * rand(150,420)*u, vy: Math.sin(a) * rand(150,420)*u - 100*u,
+      life: rand(0.6, 1.3), size: rand(6, 14)*u, drag: 1.5, g: 260*u, sprite: SPR.ember, alpha: 1, add: true });
+  }
+  if (Math.random() < 0.5 * fade)
+    emit({ x: cx + rand(-R, R) * 0.6, y: cy - R * 0.6, vx: rand(-30,30)*u, vy: rand(-120,-60)*u, life: rand(1, 1.8),
+      size: R * rand(0.5, 0.9), grow: 60*u, sprite: SPR.smoke[(Math.random() * 3) | 0], alpha: 0.35, fadeIn: true });
+  tint = { color: "255,90,0", a: 0.16 * fade * grow };
+  shake = Math.max(shake, 7 * fade * (t < 2.2 ? 1 : 0.4) * u);
+}
+
+function boltPath(x1, y1, x2, y2, disp, depth, out){
+  if (depth === 0){ out.push(x2, y2); return; }
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+  const off = (Math.random() - 0.5) * disp;
+  const nx = mx - dy / len * off, ny = my + dx / len * off;
+  boltPath(x1, y1, nx, ny, disp / 2, depth - 1, out);
+  boltPath(nx, ny, x2, y2, disp / 2, depth - 1, out);
+}
+function strokeBolt(pts, w){
+  ctx.beginPath(); ctx.moveTo(pts[0], pts[1]);
+  for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i+1]);
+  ctx.strokeStyle = "rgba(60,140,255,.35)"; ctx.lineWidth = 8 * w; ctx.stroke();
+  ctx.strokeStyle = "rgba(140,215,255,.85)"; ctx.lineWidth = 3 * w; ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,1)"; ctx.lineWidth = 1.2 * w; ctx.stroke();
+}
+function drawChidori(now){
+  const e = effects.chidori;
+  const t = (now - e.t0) / 1000;
+  if (t > e.dur){ effects.chidori = null; return; }
+  const P = palms();
+  if (P.length){
+    let best = P[0], bd = Infinity;
+    for (const p of P){ const d = Math.hypot(p.x - e.pos.x, p.y - e.pos.y); if (d < bd){ bd = d; best = p; } }
+    e.pos.x += (best.x - e.pos.x) * 0.55; e.pos.y += (best.y - e.pos.y) * 0.55;
+  }
+  const a = clamp01(t / 0.3) * (t > e.dur - 0.6 ? (e.dur - t) / 0.6 : 1);
+  const u = H / 720, R = H * 0.085 * (1 + 0.18 * Math.random());
+  const { x, y } = e.pos;
+
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = 0.9 * a;
+  ctx.drawImage(SPR.glowB, x - R*3, y - R*3, R*6, R*6);
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  const n = 7 + (Math.random() * 6 | 0);
+  for (let i = 0; i < n; i++){
+    const ang = Math.random() * Math.PI * 2, len = R * rand(1.1, 3.4);
+    const ex = x + Math.cos(ang) * len, ey = y + Math.sin(ang) * len;
+    const pts = [x, y];
+    boltPath(x, y, ex, ey, len * 0.45, 5, pts);
+    ctx.globalAlpha = a * rand(0.6, 1);
+    strokeBolt(pts, u);
+    if (Math.random() < 0.45){                      // тармақ
+      const k = 2 * (8 + (Math.random() * 16 | 0));
+      const bx = pts[k], by = pts[k+1], ba = ang + rand(-1, 1), bl = len * rand(0.3, 0.6);
+      const bp = [bx, by];
+      boltPath(bx, by, bx + Math.cos(ba) * bl, by + Math.sin(ba) * bl, bl * 0.5, 4, bp);
+      strokeBolt(bp, u * 0.6);
+    }
+  }
+  ctx.globalAlpha = a;
+  ctx.drawImage(SPR.glowB, x - R*0.9, y - R*0.9, R*1.8, R*1.8);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  for (let i = 0; i < 7; i++){
+    const ang = Math.random() * Math.PI * 2, sp = rand(200, 650) * u;
+    emit({ x, y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: rand(0.12, 0.35), size: rand(5, 12) * u,
+      drag: 3, g: 500 * u, sprite: SPR.spark, alpha: a, add: true });
+  }
+  tint = { color: "40,120,255", a: (0.06 + Math.random() * 0.08) * a };
+  shake = Math.max(shake, 2.5 * a * u);
+}
+
+/* =========================================================
+   Қол нүктелері
+   ========================================================= */
+function drawLandmarks(){
+  const res = state.hands;
+  if (!res || !res.landmarks || !res.landmarks.length) return;
+  const slots = handSlots(res);
+  const conn = HandLandmarker.HAND_CONNECTIONS;
+  const colors = ["#ffb347", "#5cc8ff"];
+  ctx.lineWidth = Math.max(2, H / 300);
+  for (let s = 0; s < 2; s++){
+    const lm = slots[s]; if (!lm) continue;
+    const pts = lm.map(toScreen);
+    ctx.strokeStyle = colors[s]; ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    for (const c of conn){ ctx.moveTo(pts[c.start].x, pts[c.start].y); ctx.lineTo(pts[c.end].x, pts[c.end].y); }
+    ctx.stroke();
+    ctx.fillStyle = "#fff"; ctx.globalAlpha = 0.95;
+    const r = Math.max(2.5, H / 260);
+    for (const p of pts){ ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* =========================================================
+   Негізгі цикл
+   ========================================================= */
+let lastVideoTime = -1, lastFrame = performance.now(), fpsAcc = 0, fpsN = 0, fps = 0;
+
+function processFrame(now){
+  if (!handLandmarker) return;
+  let res;
+  try { res = handLandmarker.detectForVideo(video, now); }
+  catch (e){ console.error(e); fallbackHandToCPU(); return; }
+  state.hands = res;
+  const f = extractFeatures(res);
+  if (f && state.recording) addSample(f);
+  const p = f ? classify(f) : null;
+  state.pred = p;
+  const ok = p && p.conf >= MIN_CONF && p.dist <= state.settings.threshold;
+  state.accepted = ok ? p.label : null;
+  if (!state.recording) updateStable(state.accepted);
+  if (effects.clones && segmenter) runSegmentation(now);   // тек клон кезінде
+}
+
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - lastFrame) / 1000); lastFrame = now;
+  fpsAcc += dt; fpsN++;
+  if (fpsAcc > 0.5){ fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0; }
+
+  if (state.camReady && video.readyState >= 2 && video.currentTime !== lastVideoTime){
+    lastVideoTime = video.currentTime;
+    processFrame(now);
+  }
+  if (state.buffer.length && now - state.lastCommit > SEQ_TIMEOUT) clearBuffer();
+
+  // --- салу ---
+  tint = null;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = "#050403"; ctx.fillRect(0, 0, W, H);
+  if (shake > 0.2) ctx.translate(rand(-shake, shake), rand(-shake, shake));
+  shake *= 0.85;
+
+  if (state.camReady){
+    ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, W, H);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = "#120d09"; ctx.fillRect(0, 0, W, H);
+  }
+  if (effects.clones) drawClones(now);
+  if (effects.fire) drawFire(now);
+  if (effects.chidori) drawChidori(now);
+  updateParticles(dt);
+  drawParticles();
+  if (tint){ ctx.fillStyle = `rgba(${tint.color},${tint.a})`; ctx.fillRect(-20, -20, W + 40, H + 40); }
+  if (state.settings.showLandmarks) drawLandmarks();
+
+  updateHud(now);
+}
+
+/* =========================================================
+   HUD және UI
+   ========================================================= */
+const hud = { kanji: $("#hudKanji"), name: $("#hudName"), conf: $("#hudConf"), dist: $("#hudDist"),
+  stab: $("#stabBar"), fps: $("#hudFps"), hands: $("#hudHands"), seq: $("#seqTimer"), rec: $("#rec") };
+let lastLive = null;
+const setText = (el, v) => { if (el.textContent !== v) el.textContent = v; };
+
+function updateHud(now){
+  const p = state.pred, acc = state.accepted;
+  if (!state.samples.length && state.camReady){
+    setText(hud.kanji, "?"); setText(hud.name, "Үлгі жоқ — үйретіңіз");
+  } else if (acc){
+    setText(hud.kanji, SEAL[acc].kanji); setText(hud.name, SEAL[acc].name);
+  } else {
+    setText(hud.kanji, "—"); setText(hud.name, p ? `(${SEAL[p.label].name}?)` : "Мөр жоқ");
+  }
+  setText(hud.conf, p ? Math.round(p.conf * 100) + "%" : "—");
+  setText(hud.dist, p ? p.dist.toFixed(3) : "—");
+  hud.dist.style.color = p ? (p.dist <= state.settings.threshold ? "var(--ok)" : "#ff9b9b") : "";
+  const st = state.stable;
+  hud.stab.style.width = (st.cand ? Math.min(1, st.count / state.settings.stability) * 100 : 0) + "%";
+  setText(hud.fps, Math.round(fps) + " FPS");
+  const nh = state.hands && state.hands.landmarks ? state.hands.landmarks.length : 0;
+  setText(hud.hands, "Қол: " + nh);
+  if (state.recording) setText(hud.rec, `● ЖАЗУ: ${SEAL[state.selected].name} (${state.counts[state.selected]})${nh ? "" : " — қол жоқ"}`);
+  hud.seq.style.width = state.buffer.length ? (100 * clamp01(1 - (now - state.lastCommit) / SEQ_TIMEOUT)) + "%" : "0%";
+
+  if (acc !== lastLive){
+    document.querySelectorAll(".seal.live").forEach(el => el.classList.remove("live"));
+    if (acc){ const el = document.querySelector(`.seal[data-id="${acc}"]`); el && el.classList.add("live"); }
+    lastLive = acc;
+  }
+  if (state.recording && (now | 0) % 6 === 0) updateCounts();
+}
+
+function renderChips(animateLast){
+  const box = $("#chips");
+  if (!state.buffer.length){ box.innerHTML = '<span class="chip empty">мөр жасаңыз…</span>'; renderTechProgress(); return; }
+  box.innerHTML = state.buffer.map((id, i) =>
+    `<span class="chip${animateLast && i === state.buffer.length - 1 ? " new" : ""}"><span class="k">${SEAL[id].kanji}</span>${SEAL[id].name}</span>`).join("");
+  renderTechProgress();
+}
+
+function buildSealGrid(){
+  $("#sealGrid").innerHTML = SEALS.map(s =>
+    `<button class="seal" data-id="${s.id}" title="${s.name}"><span class="c">0</span><div class="k">${s.kanji}</div><div class="n">${s.name}</div></button>`).join("");
+  $("#sealGrid").addEventListener("click", e => {
+    const b = e.target.closest(".seal"); if (!b) return;
+    state.selected = b.dataset.id; b.blur(); updateSelected();
+  });
+}
+function updateSelected(){
+  document.querySelectorAll(".seal").forEach(el => el.classList.toggle("sel", el.dataset.id === state.selected));
+  const s = SEAL[state.selected];
+  $("#selKanji").textContent = s.kanji; $("#selName").textContent = s.name;
+  updateCounts();
+}
+function updateCounts(){
+  document.querySelectorAll(".seal").forEach(el => {
+    const c = state.counts[el.dataset.id] || 0, b = el.querySelector(".c");
+    b.textContent = c; b.classList.toggle("has", c > 0);
+  });
+  $("#selCount").textContent = state.counts[state.selected] || 0;
+  $("#totalCount").textContent = state.samples.length + " үлгі";
+}
+
+function buildTechList(){
+  $("#techList").innerHTML = TECHS.map(t => `
+    <div class="tech" data-id="${t.id}">
+      <div class="hd"><div><div class="nm" style="color:${t.color}">${t.name.replace(/!$/, "")}</div><div class="jp">${t.jp}</div></div>
+      <button class="btn" data-test="${t.id}">▶ Тест</button></div>
+      <div class="seq">${t.seq.map(id => `<span>${SEAL[id].kanji} ${SEAL[id].name}</span>`).join('<span style="border:0;padding:0 1px">→</span>')}</div>
+    </div>`).join("");
+  $("#techList").addEventListener("click", e => {
+    const b = e.target.closest("[data-test]"); if (!b) return;
+    b.blur(); triggerTechnique(b.dataset.test);
+  });
+}
+let activeTimer = null;
+function renderTechProgress(firedId){
+  for (const t of TECHS){
+    const el = document.querySelector(`.tech[data-id="${t.id}"]`); if (!el) continue;
+    const prog = progressOf(t.seq, state.buffer);
+    el.querySelectorAll(".seq span:not([style])").forEach((sp, i) => sp.classList.toggle("done", i < prog));
+  }
+  if (firedId){
+    const el = document.querySelector(`.tech[data-id="${firedId}"]`);
+    if (el){ el.classList.add("active"); clearTimeout(activeTimer); activeTimer = setTimeout(() => el.classList.remove("active"), 2500); }
+  }
+}
+
+function showBanner(t){
+  const b = $("#banner");
+  $("#bannerName").textContent = t.name; $("#bannerJp").textContent = t.jp;
+  b.style.setProperty("--bc", t.color);
+  b.classList.remove("show"); void b.offsetWidth; b.classList.add("show");
+}
+
+let toastTimer = null;
+function toast(msg, err){
+  const el = $("#toast");
+  el.textContent = msg; el.classList.toggle("err", !!err); el.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 2800);
+}
+
+/* =========================================================
+   WebAudio дыбыстары
+   ========================================================= */
+const audio = { ctx: null, master: null, noise: null };
+function initAudio(){
+  if (audio.ctx){ if (audio.ctx.state === "suspended") audio.ctx.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+  const c = new AC();
+  audio.ctx = c;
+  audio.master = c.createGain(); audio.master.gain.value = state.settings.sound ? 0.8 : 0;
+  audio.master.connect(c.destination);
+  const len = c.sampleRate * 2, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  audio.noise = buf;
+}
+const canPlay = () => audio.ctx && state.settings.sound;
+function noiseSrc(){ const s = audio.ctx.createBufferSource(); s.buffer = audio.noise; s.loop = true; return s; }
+function env(g, t, peak, attack, hold, release){
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + attack);
+  g.gain.setValueAtTime(peak, t + attack + hold);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + attack + hold + release);
+}
+function sfxClick(){
+  if (!canPlay()) return;
+  const c = audio.ctx, t = c.currentTime, o = c.createOscillator(), g = c.createGain();
+  o.type = "triangle"; o.frequency.setValueAtTime(620, t); o.frequency.exponentialRampToValueAtTime(1100, t + 0.06);
+  env(g, t, 0.18, 0.005, 0.02, 0.08);
+  o.connect(g).connect(audio.master); o.start(t); o.stop(t + 0.15);
+}
+function sfxFire(){
+  if (!canPlay()) return;
+  const c = audio.ctx, t = c.currentTime;
+  const n = noiseSrc(), lp = c.createBiquadFilter(), g = c.createGain();
+  lp.type = "lowpass"; lp.Q.value = 0.7;
+  lp.frequency.setValueAtTime(250, t); lp.frequency.exponentialRampToValueAtTime(2600, t + 0.5); lp.frequency.exponentialRampToValueAtTime(450, t + 3.4);
+  env(g, t, 0.9, 0.18, 1.7, 1.6);
+  n.connect(lp).connect(g).connect(audio.master); n.start(t, Math.random()); n.stop(t + 3.6);
+  const o = c.createOscillator(), lp2 = c.createBiquadFilter(), g2 = c.createGain();
+  o.type = "sawtooth"; o.frequency.setValueAtTime(95, t); o.frequency.exponentialRampToValueAtTime(38, t + 3.2);
+  lp2.type = "lowpass"; lp2.frequency.value = 170;
+  env(g2, t, 0.55, 0.2, 1.2, 1.8);
+  o.connect(lp2).connect(g2).connect(audio.master); o.start(t); o.stop(t + 3.4);
+  // сытырлау
+  const cn = noiseSrc(), hp = c.createBiquadFilter(), cg = c.createGain();
+  hp.type = "highpass"; hp.frequency.value = 2500; cg.gain.value = 0;
+  for (let x = 0.1; x < 3.2; x += 0.02) cg.gain.setValueAtTime(Math.random() < 0.18 ? rand(0.1, 0.35) : 0, t + x);
+  cg.gain.setValueAtTime(0, t + 3.25);
+  cn.connect(hp).connect(cg).connect(audio.master); cn.start(t); cn.stop(t + 3.3);
+}
+function sfxChidori(dur){
+  if (!canPlay()) return;
+  const c = audio.ctx, t = c.currentTime;
+  const fade = x => Math.min(1, x / 0.25, (dur - x) / 0.5);
+  const n = noiseSrc(), bp = c.createBiquadFilter(), g = c.createGain();
+  bp.type = "bandpass"; bp.frequency.value = 4200; bp.Q.value = 1.4;
+  g.gain.value = 0;
+  for (let x = 0; x < dur; x += 0.025){
+    g.gain.setValueAtTime(rand(0.15, 0.7) * fade(x), t + x);
+    bp.frequency.setValueAtTime(rand(2500, 6500), t + x);
+  }
+  g.gain.setValueAtTime(0, t + dur);
+  n.connect(bp).connect(g).connect(audio.master); n.start(t); n.stop(t + dur + 0.05);
+  // «құстардың шиқылы»
+  const o = c.createOscillator(), og = c.createGain();
+  o.type = "square"; og.gain.value = 0;
+  for (let x = 0; x < dur; x += 0.04){
+    o.frequency.setValueAtTime(rand(1800, 4200), t + x);
+    og.gain.setValueAtTime(0.035 * fade(x), t + x);
+  }
+  og.gain.setValueAtTime(0, t + dur);
+  o.connect(og).connect(audio.master); o.start(t); o.stop(t + dur + 0.05);
+  // гул
+  const h = c.createOscillator(), hg = c.createGain();
+  h.type = "sawtooth"; h.frequency.value = 110;
+  env(hg, t, 0.06, 0.2, dur - 0.8, 0.5);
+  h.connect(hg).connect(audio.master); h.start(t); h.stop(t + dur);
+}
+function sfxPoof(){
+  if (!canPlay()) return;
+  const c = audio.ctx, t = c.currentTime;
+  const n = noiseSrc(), lp = c.createBiquadFilter(), g = c.createGain();
+  lp.type = "lowpass"; lp.frequency.setValueAtTime(1800, t); lp.frequency.exponentialRampToValueAtTime(160, t + 0.55);
+  env(g, t, 0.9, 0.01, 0.05, 0.5);
+  n.connect(lp).connect(g).connect(audio.master); n.start(t, Math.random()); n.stop(t + 0.7);
+  const o = c.createOscillator(), og = c.createGain();
+  o.type = "sine"; o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.3);
+  env(og, t, 0.6, 0.005, 0.03, 0.3);
+  o.connect(og).connect(audio.master); o.start(t); o.stop(t + 0.4);
+}
+
+/* =========================================================
+   Оқиғалар
+   ========================================================= */
+function isTyping(e){ const t = e.target; return t && (t.tagName === "INPUT" && t.type !== "range" && t.type !== "checkbox" || t.tagName === "TEXTAREA"); }
+window.addEventListener("keydown", e => {
+  if (e.code !== "Space" || isTyping(e)) return;
+  e.preventDefault();
+  if (!e.repeat) startRec();
+});
+window.addEventListener("keyup", e => { if (e.code === "Space") { e.preventDefault(); stopRec(); } });
+window.addEventListener("blur", stopRec);
+
+const recBtn = $("#recBtn");
+recBtn.addEventListener("pointerdown", e => { e.preventDefault(); recBtn.setPointerCapture(e.pointerId); startRec(); });
+["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => recBtn.addEventListener(ev, stopRec));
+recBtn.addEventListener("keydown", e => { if (e.code === "Space" || e.code === "Enter") e.preventDefault(); });
+
+$("#startBtn").addEventListener("click", startCamera);
+
+$("#exportBtn").addEventListener("click", () => {
+  if (!state.samples.length){ toast("Экспорттайтын үлгі жоқ."); return; }
+  const blob = new Blob([JSON.stringify(serialize())], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `naruto-seals-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$("#importBtn").addEventListener("click", () => $("#importFile").click());
+$("#importFile").addEventListener("change", async e => {
+  const file = e.target.files[0]; e.target.value = "";
+  if (!file) return;
+  try {
+    const imported = parseSamples(JSON.parse(await file.text()));
+    if (!imported.length) throw new Error("жарамды үлгі табылмады");
+    const merge = state.samples.length && confirm(`${imported.length} үлгі табылды.\n\nOK — бар деректерге қосу\nБас тарту — бар деректерді ауыстыру`);
+    state.samples = merge ? state.samples.concat(imported) : imported;
+    recount(); saveData(); updateCounts();
+    toast(`${imported.length} үлгі импортталды.`);
+  } catch (err){ toast("Импорт қатесі: " + err.message, true); }
+});
+$("#clearSelBtn").addEventListener("click", () => {
+  const s = SEAL[state.selected];
+  if (!state.counts[s.id]) { toast(`«${s.name}» үшін үлгі жоқ.`); return; }
+  if (!confirm(`«${s.name}» мөрінің ${state.counts[s.id]} үлгісін өшіру керек пе?`)) return;
+  state.samples = state.samples.filter(x => x.label !== s.id);
+  recount(); saveData(); updateCounts();
+});
+$("#clearAllBtn").addEventListener("click", () => {
+  if (!state.samples.length) return;
+  if (!confirm(`Барлық ${state.samples.length} үлгіні өшіру керек пе? Бұл әрекетті қайтару мүмкін емес.`)) return;
+  state.samples = []; recount(); saveData(); updateCounts();
+});
+
+function bindSettings(){
+  const thr = $("#thr"), stab = $("#stab"), lm = $("#showLm"), snd = $("#sound");
+  const S = state.settings;
+  thr.value = S.threshold; stab.value = S.stability; lm.checked = S.showLandmarks; snd.checked = S.sound;
+  const show = () => { $("#thrOut").textContent = (+S.threshold).toFixed(2); $("#stabOut").textContent = S.stability; };
+  show();
+  thr.addEventListener("input", () => { S.threshold = +thr.value; show(); saveSettings(); });
+  stab.addEventListener("input", () => { S.stability = +stab.value; show(); saveSettings(); });
+  lm.addEventListener("change", () => { S.showLandmarks = lm.checked; saveSettings(); });
+  snd.addEventListener("change", () => {
+    S.sound = snd.checked; saveSettings(); initAudio();
+    if (audio.master) audio.master.gain.value = S.sound ? 0.8 : 0;
+  });
+}
+
+/* =========================================================
+   Іске қосу
+   ========================================================= */
+loadSettings();
+loadData();
+buildSealGrid();
+buildTechList();
+updateSelected();
+bindSettings();
+renderChips();
+requestAnimationFrame(frame);
+
+loadModels().then(() => {
+  const b = $("#startBtn"); b.disabled = false; b.textContent = "🎥 Камераны қосу";
+}).catch(e => {
+  console.error(e);
+  setStatus("Модель жүктелмеді");
+  $("#startBtn").textContent = "Модель жүктелмеді";
+  $("#startErr").textContent = "MediaPipe жүктелмеді: " + (e.message || e) + ". Интернет байланысын тексеріңіз.";
+});
+</script>
+</body>
+</html>
